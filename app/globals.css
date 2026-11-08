@@ -1,26 +1,255 @@
 @import "tailwindcss";
 
+/* Design tokens — "Pixel Lighthouse" design system (see DESIGN.md). */
+@theme {
+  --color-sand: #f6e6cb;
+  --color-page: #fffcf3;
+  --color-fade: #f9edd3;
+  --color-dusk: #6c4e7e;
+  --color-plum: #4a3358;
+  --color-teal: #3b8e85;
+  /* Darkened teal for filled buttons carrying sand text (original fails AA at 3.2:1). */
+  --color-teal-deep: #2c6e67;
+  --color-coral: #e87a6e;
+  --color-deep: #1c2927;
+  /* The name: dark plum. 12.7:1 on cream; 3:1+ (large text) over the hero sky where the name sits. */
+  --color-name: #3b2a4a;
+  --color-card: #fff9ee;
+  --color-muted: #6b6256;
+
+  /* Headings: Array Regular. */
+  --font-serif: var(--font-array), system-ui, sans-serif;
+  /* Display: Unbounded SemiBold, used for the name only (hero and nav pill). */
+  --font-display: var(--font-unbounded), system-ui, sans-serif;
+  --font-body: var(--font-khand), system-ui, sans-serif;
+  --color-line: #dccaa9;
+
+  --shadow-nav: 0 2px 6px rgb(28 41 39 / 0.15);
+  --shadow-card: 0 1px 1px rgb(28 41 39 / 0.08), 0 4px 6px rgb(28 41 39 / 0.08);
+
+  --radius-control: 8px;
+  --radius-card: 16px;
+
+  --container-page: 1200px;
+}
+
+/* Hero scale unit: tracks the smaller of viewport width and height, so the name and the
+   hero card keep the same proportions on short laptop screens as on tall ones. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --hu: min(1vw, 1.75svh);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+h1, h2, h3 {
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 96px;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-page);
+  color: var(--color-deep);
+  font-family: var(--font-body);
+  font-size: 19px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-deep);
+  outline-offset: 3px;
+}
+.on-dusk :focus-visible {
+  outline-color: var(--color-sand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    transition: none !important;
+  }
+}
+
+/* Scroll-driven motion: progressive enhancement. Content is fully visible where unsupported. */
+@keyframes reveal-in {
+  from { opacity: 0; translate: 0 28px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes grow-x {
+  from { scale: 0 1; }
+  to { scale: 1 1; }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 5% entry 40%;
+    }
+    .read-progress {
+      transform-origin: left;
+      animation: grow-x linear both;
+      animation-timeline: scroll(root);
+    }
+  }
+}
+
+/* Hero name: highlight follows the pointer inside the letters; descriptor reveals on hover/focus. */
+.hero-name {
+  --mx: -999px;
+  --my: -999px;
+  color: var(--name-color, var(--color-name));
+}
+.hero-name:focus-visible {
+  outline-offset: 8px;
+}
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .hero-name__letters {
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    background-image: radial-gradient(
+      circle 170px at var(--mx) var(--my),
+      var(--color-coral) 0%,
+      var(--color-dusk) 55%,
+      var(--name-color, var(--color-name)) 100%
+    );
+    background-color: var(--name-color, var(--color-name));
+    background-repeat: no-repeat;
+  }
+}
+/* Over the Seattle skyline the dark plum name is unreadable: it fades to cream with a soft shadow (--tone goes 0 to 1 over a
+   moment), and eases back to plum as it docks into the nav pill (--p). */
+@property --tone {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+.hero-name {
+  --tone: 0;
+  --name-color: color-mix(in srgb, #fffcf3 calc(var(--tone) * (1 - var(--p, 0)) * 100%), var(--color-name));
+  filter: drop-shadow(0 2px 10px rgb(28 20 40 / calc(0.55 * var(--tone) * (1 - var(--p, 0)))));
+  transition: --tone 1.4s ease-in-out 0.2s;
+}
+html[data-scene="seattle"] .hero-name {
+  --tone: 1;
+}
+.hero-name__reveal {
+  transition: opacity 0.25s ease, translate 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .hero-name__reveal {
+    opacity: 0;
+    translate: -8px 0;
+  }
+  .hero-name:hover .hero-name__reveal,
+  .hero-name:focus-visible .hero-name__reveal {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* While the name travels into the nav pill, hide the descriptor. */
+.hero-name[data-moving="true"] .hero-name__reveal {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+.hero-name[data-docked="true"] {
+  cursor: pointer;
+}
+
+/* Striped edge: bars in the image's own color that thin out and lighten downward, so the image seems to dissolve into the page (like the reference). Sits at the top of the content sheet. */
+.stripe-edge {
+  height: 30px;
+  background-image: linear-gradient(to bottom, rgb(var(--stripe-rgb, 121 139 152) / 0.55) 0px 4px, transparent 4px 7px, rgb(var(--stripe-rgb, 121 139 152) / 0.42) 7px 10px, transparent 10px 14px, rgb(var(--stripe-rgb, 121 139 152) / 0.3) 14px 16px, transparent 16px 21px, rgb(var(--stripe-rgb, 121 139 152) / 0.2) 21px 23px, transparent 23px 29px, rgb(var(--stripe-rgb, 121 139 152) / 0.12) 29px 30px);
+}
+@media (min-width: 768px) {
+  /* Match the image's faded left edge. */
+  .stripe-edge {
+    -webkit-mask-image: linear-gradient(to right, transparent 10%, black 30%);
+    mask-image: linear-gradient(to right, transparent 10%, black 30%);
+  }
+}
+
+/* The hero card wraps its content (no wider than it has to be). Over the Seattle skyline it mirrors to the right edge of the
+   hero with the same margin on the right as on the left (3rem, or 6rem from lg), whatever its width: cqw is the width of
+   .hero-card-wrap and 100% inside translate is the card's own width. Desktop only. */
+.hero-card-wrap {
+  container-type: inline-size;
+}
+.hero-card {
+  transition: translate 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@media (min-width: 768px) {
+  html[data-scene="seattle"] .hero-card {
+    translate: calc(100cqw - 100% - 6rem) 0;
+  }
+}
+@media (min-width: 1024px) {
+  html[data-scene="seattle"] .hero-card {
+    translate: calc(100cqw - 100% - 12rem) 0;
+  }
+}
+
+/* Custom cursor: a small Stardew-style pixel arrow (sprites in public/cursors). Mouse-like pointers only. */
+@media (hover: hover) and (pointer: fine) {
+  html {
+    cursor: url("/cursors/arrow.png") 4 4, auto;
+  }
+  a,
+  button,
+  summary,
+  [role="button"],
+  [tabindex="0"] {
+    cursor: url("/cursors/arrow.png") 4 4, pointer;
+  }
+  input,
+  textarea {
+    cursor: text;
+  }
+}
+
+/* Pixel-art wood frame */
+.pixel-frame {
+  --px: 4px;
+  position: relative;
+  padding: calc(var(--px) * 4);
+  background-color: #8a5a2b;
+  /* horizontal wood grain */
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0) 0 calc(var(--px) * 3),
+      rgba(60, 30, 10, 0.28) calc(var(--px) * 3) calc(var(--px) * 4),
+      rgba(0, 0, 0, 0) calc(var(--px) * 4) calc(var(--px) * 7),
+      rgba(255, 220, 160, 0.14) calc(var(--px) * 7) calc(var(--px) * 8)
+    );
+  /* stepped, pixel-cut corners */
+  clip-path: polygon(
+    var(--px) 0, calc(100% - var(--px)) 0, calc(100% - var(--px)) var(--px),
+    100% var(--px), 100% calc(100% - var(--px)), calc(100% - var(--px)) calc(100% - var(--px)),
+    calc(100% - var(--px)) 100%, var(--px) 100%, var(--px) calc(100% - var(--px)),
+    0 calc(100% - var(--px)), 0 var(--px), var(--px) var(--px)
+  );
+  /* hard-edged bevel: light top/left, dark bottom/right, dark outline */
+  box-shadow:
+    inset var(--px) var(--px) 0 #c48a4a,
+    inset calc(var(--px) * -1) calc(var(--px) * -1) 0 #5a3515;
+}
+.pixel-frame::after {
+  /* inner dark lip around the picture */
+  content: "";
+  position: absolute;
+  inset: calc(var(--px) * 3);
+  box-shadow: 0 0 0 var(--px) #3b2210;
+  pointer-events: none;
+}
+.pixel-frame > img {
+  display: block;
+  position: relative;
 }
