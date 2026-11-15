@@ -189,9 +189,8 @@ export default function AboutPage() {
             Don’t be shy!
           </h2>
           <p className="mb-6">
-            Interested in working together? Want to talk sports? Have you had
-            the best meal of your life recently? Want to just say hi? Reach out
-            and I will be in touch shortly. I can’t wait to hear from you!
+            Interested in working together? Have you had the best meal of your life recently? 
+            Want to just say hi? Reach out and I will be in touch shortly. I can’t wait to hear from you!
           </p>
           <div className="flex flex-wrap gap-4">
             <a href={`mailto:${EMAIL}`} className={btnPrimary}>

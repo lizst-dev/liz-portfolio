@@ -5,8 +5,15 @@ import { notFound } from "next/navigation";
 import { CaseTracker } from "../../components/CaseTracker";
 import { SiteFooter } from "../../components/SiteFooter";
 import { SiteNav } from "../../components/SiteNav";
+import { CardDock } from "../../components/CardDock";
+import { PhoneSequence } from "../../components/PhoneSequence";
+import { CardVideo } from "../../components/CardVideo";
+import { SketchViewer } from "../../components/SketchViewer";
+import { YouTubeEmbed } from "../../components/YouTubeEmbed";
+import { ZoomImage } from "../../components/ZoomImage";
+import { HeaderVideo } from "../../components/HeaderVideo";
 import { btnPrimary, glass } from "../../components/ui";
-import { getProject, projects, type Figure } from "../../data/projects";
+import { getProject, projects, type Feature, type Figure, type Gallery, type Img, type Profile, type Section } from "../../data/projects";
 
 export function generateStaticParams() {
   return projects.map((p) => ({ slug: p.slug }));
@@ -70,6 +77,614 @@ function Fig({ figure }: { figure: Figure }) {
   );
 }
 
+/** Grow a little and cast a drop shadow on hover. Motion is skipped for reduced-motion users. */
+const HOVER =
+  "relative transition-[scale,box-shadow] duration-200 ease-out hover:z-10 hover:shadow-[0_14px_30px_rgba(28,41,39,0.28)] motion-safe:hover:scale-[1.06]";
+
+/** A subtle lift for clickable images: framed ones rise and gain a soft shadow. Skipped for reduced motion. */
+const RAISE =
+  "relative transition-[translate,box-shadow] duration-200 ease-out motion-safe:hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(28,41,39,0.18)]";
+/** Floating images have no frame to put a shadow on, so they only lift. */
+const LIFT = "transition-[translate] duration-200 ease-out motion-safe:hover:-translate-y-1";
+
+function Pic({ img, cols = 1, hover = false }: { img: Img; cols?: number; hover?: boolean }) {
+  const sizes = `(min-width: 800px) ${Math.round(752 / cols)}px, ${cols === 1 ? "100vw" : "50vw"}`;
+  const bare = img.bare;
+  return (
+    // Floating images use mix-blend-multiply to drop their white backdrop onto the page, which only works
+    // outside an animated (.reveal) stacking context, so they skip the reveal.
+    <figure className={`${bare ? "" : "reveal"} break-inside-avoid`}>
+      {(img.label || img.heading) && (
+        <div className="reveal mb-4">
+          {img.label && <p className="mb-1 text-[15px] font-bold text-teal-deep">{img.label}</p>}
+          {img.heading && (
+            <h3 className="font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.2]">{img.heading}</h3>
+          )}
+        </div>
+      )}
+      {bare && img.title && (
+        <p className="mb-2 text-center font-serif text-[clamp(20px,2.2vw,24px)] leading-[1.2]">{img.title}</p>
+      )}
+      <ZoomImage src={img.src} alt={img.alt} width={img.width} height={img.height}>
+        <div
+          className={`${bare ? "" : `overflow-hidden rounded-control border border-line bg-white ${RAISE}`} ${hover ? HOVER : ""}`}
+        >
+          <Image
+            src={img.src}
+            alt={img.alt}
+            width={img.width}
+            height={img.height}
+            sizes={sizes}
+            quality={85}
+            style={img.square ? { objectPosition: img.square } : undefined}
+            className={`${img.square ? "aspect-square w-full object-cover" : "h-auto w-full"} ${bare ? `mix-blend-multiply ${LIFT}` : ""}`}
+          />
+        </div>
+      </ZoomImage>
+      {((!bare && img.title) || img.caption) && (
+        <figcaption className="px-1 pt-2 text-[15px]">
+          {!bare && img.title && <span className="block font-bold">{img.title}</span>}
+          {img.caption && <span className="block text-muted">{img.caption}</span>}
+        </figcaption>
+      )}
+    </figure>
+  );
+}
+
+const gridCols: Record<Gallery["cols"], string> = {
+  1: "grid-cols-1",
+  2: "grid-cols-1 sm:grid-cols-2",
+  3: "grid-cols-2 sm:grid-cols-3",
+  4: "grid-cols-2 sm:grid-cols-4",
+  5: "grid-cols-2 sm:grid-cols-3 md:grid-cols-5",
+};
+
+/** A bordered show/hide control. Native <details>, so it works without JavaScript. */
+function Collapse({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <details className="group reveal rounded-card border border-line bg-white/50">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-card p-5 text-[18px] font-bold [&::-webkit-details-marker]:hidden">
+        <span>{label}</span>
+        <span aria-hidden="true" className="text-[28px] leading-none text-teal-deep group-open:hidden">+</span>
+        <span aria-hidden="true" className="hidden text-[28px] leading-none text-teal-deep group-open:inline">−</span>
+      </summary>
+      <div className="border-t border-line p-5 sm:p-8">{children}</div>
+    </details>
+  );
+}
+
+const TILT = [-2.5, 1.5, -1, 2.5, -1.5];
+
+function GalleryView({ gallery }: { gallery: Gallery }) {
+  let body: React.ReactNode;
+  if (gallery.layout === "strip") {
+    // A compact row of pinned-up notes: slightly tilted, scrolls sideways on small screens.
+    body = (
+      <ul className="flex snap-x gap-4 overflow-x-auto px-2 py-4">
+        {gallery.items.map((img, n) => (
+          <li
+            key={img.src}
+            style={{ rotate: `${TILT[n % TILT.length]}deg` }}
+            className="reveal w-40 shrink-0 snap-start sm:w-auto sm:min-w-0 sm:flex-1"
+          >
+            <ZoomImage src={img.src} alt={img.alt} width={img.width} height={img.height}>
+              <div className={`overflow-hidden rounded-control border border-line bg-white shadow-sm ${gallery.hover ? HOVER : ""}`}>
+                <Image
+                  src={img.src}
+                  alt={img.alt}
+                  width={img.width}
+                  height={img.height}
+                  sizes="(min-width: 800px) 150px, 160px"
+                  className="aspect-[4/5] w-full object-cover"
+                />
+              </div>
+            </ZoomImage>
+          </li>
+        ))}
+      </ul>
+    );
+  } else if (gallery.layout === "dock") {
+    body = <CardDock items={gallery.items} className={`grid items-start gap-4 ${gridCols[gallery.cols]}`} />;
+  } else if (gallery.layout === "masonry") {
+    body = (
+      <div className="columns-2 gap-3 space-y-3 sm:columns-3 md:columns-4">
+        {gallery.items.map((img) => <Pic key={img.src} img={img} cols={4} hover={gallery.hover} />)}
+      </div>
+    );
+  } else {
+    body = (
+      <div className={`grid items-start gap-4 ${gridCols[gallery.cols]}`}>
+        {gallery.items.map((img) => <Pic key={img.src} img={img} cols={gallery.cols} hover={gallery.hover} />)}
+      </div>
+    );
+  }
+  if (!gallery.more) return body;
+  return (
+    <div className="space-y-6">
+      {body}
+      <Collapse label={gallery.more.label}>
+        <GalleryView gallery={gallery.more.gallery} />
+      </Collapse>
+    </div>
+  );
+}
+
+function ProfileView({ profile }: { profile: Profile }) {
+  return (
+    <article className={`${glass} reveal grid items-start gap-4 p-4 sm:grid-cols-[96px_1fr] sm:gap-5 sm:p-5`}>
+      <Image
+        src={profile.image.src}
+        alt={profile.image.alt}
+        width={profile.image.width}
+        height={profile.image.height}
+        sizes="96px"
+        className="aspect-square w-20 rounded-card object-cover sm:w-24"
+      />
+      <div>
+        <h3 className="mb-2 font-serif text-[clamp(20px,2.2vw,24px)] leading-[1.2]">{profile.title}</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          {profile.groups.map((g) => (
+            <div key={g.label}>
+              <p className="mb-1 text-[15px] font-bold text-teal-deep">{g.label}</p>
+              <ul className="list-disc space-y-1 pl-4 text-[15px] leading-snug marker:text-teal">
+                {g.items.map((i) => <li key={i}>{i}</li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function FeatureView({ feature, flip }: { feature: Feature; flip: boolean }) {
+  const img = feature.image;
+  const list = (
+    <div>
+      {feature.listLabel && <p className="font-bold">{feature.listLabel}</p>}
+      {feature.listIntro && <p className="mb-2">{feature.listIntro}</p>}
+      {feature.chips ? (
+        <ul className="flex flex-wrap gap-2">
+          {feature.list.map((i) => (
+            <li key={i} className="rounded-full border border-line bg-white/60 px-3 py-1 text-[16px]">{i}</li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="list-disc space-y-1 pl-5 marker:text-teal">
+          {feature.list.map((i) => <li key={i}>{i}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+  // Tall images need a narrower column to match the text height; squarer ones get an even split.
+  const tall = img.width / img.height < 0.6;
+  const cols = feature.imageWide
+    ? flip
+      ? "sm:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]"
+      : "sm:grid-cols-[minmax(0,9fr)_minmax(0,11fr)]"
+    : tall
+    ? flip
+      ? "sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
+      : "sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
+    : "sm:grid-cols-2";
+  return (
+    <article>
+      <h3 className="reveal mb-4 font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.2]">{feature.heading}</h3>
+      {/* The image column stretches to the height of the text, and the (trimmed) image scales to fill it. */}
+      <div className={`grid gap-6 ${cols}`}>
+        <div className={`reveal space-y-4 ${flip ? "sm:order-2" : ""}`}>
+          {feature.paras.map((p) => <p key={p}>{p}</p>)}
+          {list}
+        </div>
+        {/* On sm+ the image is positioned inside a box that stretches to the text's height, so it can't make the row taller. */}
+        <div className={`relative ${flip ? "sm:order-1" : ""}`}>
+          <ZoomImage src={img.src} alt={img.alt} width={img.width} height={img.height} fill>
+            <Image
+              src={img.src}
+              alt={img.alt}
+              width={img.width}
+              height={img.height}
+              sizes="(min-width: 800px) 340px, 100vw"
+              quality={85}
+              className={`h-auto w-full object-contain mix-blend-multiply sm:h-full ${LIFT}`}
+            />
+          </ZoomImage>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function StatCards({ stats, pills }: { stats: NonNullable<Section["stats"]>; pills?: string[] }) {
+  return (
+    <div className="space-y-4">
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {stats.map((st) => (
+          <div key={st.label} className={`${glass} reveal p-4`}>
+            <dd className="font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.1]">{st.value}</dd>
+            <dt className="mt-1 text-[15px]">{st.label}</dt>
+          </div>
+        ))}
+      </dl>
+      {pills && (
+        <ul className="reveal flex flex-wrap gap-2">
+          {pills.map((t) => (
+            <li key={t} className="rounded-full border border-line bg-white/60 px-3 py-1 text-xs font-bold">{t}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ImageCards({ cards }: { cards: NonNullable<Section["imageCards"]> }) {
+  return (
+    <div className="space-y-5">
+      {cards.map((c) => (
+        <div key={c.text} className="reveal mx-auto max-w-[600px] space-y-4">
+          <h3 className="font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.2]">{c.text}</h3>
+          <ZoomImage src={c.image.src} alt={c.image.alt} width={c.image.width} height={c.image.height}>
+            <Image
+              src={c.image.src}
+              alt={c.image.alt}
+              width={c.image.width}
+              height={c.image.height}
+              quality={90}
+              sizes="(min-width: 640px) 600px, 100vw"
+              className={`h-auto w-full mix-blend-multiply ${LIFT}`}
+            />
+          </ZoomImage>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ResearchPlan({ plan }: { plan: NonNullable<Section["plan"]> }) {
+  return (
+    <div className="space-y-3">
+      {plan.duration && <p className="reveal text-[15px] font-bold text-teal-deep">{plan.duration}</p>}
+      <ul className="grid gap-3 sm:grid-cols-2">
+        {plan.methods.map((mt) => (
+          <li key={mt.label} className={`${glass} reveal flex items-center gap-4 px-5 py-4`}>
+            {mt.value && (
+              <span className="font-serif text-[clamp(36px,4.4vw,48px)] leading-none text-teal-deep">{mt.value}</span>
+            )}
+            <span className="min-w-0">
+              <span className="block font-serif text-[clamp(18px,2vw,21px)] leading-[1.2]">{mt.label}</span>
+              {mt.detail && <span className="mt-1 block text-[16px] leading-snug">{mt.detail}</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+type Stage = NonNullable<Section["stages"]>[number];
+
+function StageHead({ n, total, name }: { n: number; total: number; name: string }) {
+  return (
+    <div className="relative z-10 flex items-center gap-3">
+      <span
+        aria-hidden="true"
+        className="grid size-9 shrink-0 place-items-center rounded-full bg-teal-deep font-serif text-[18px] leading-none text-sand"
+      >
+        {n + 1}
+      </span>
+      <div className="bg-page pr-3">
+        <p className="reveal text-[15px] font-bold leading-tight text-teal-deep">
+          Stage {n + 1} of {total}
+        </p>
+        <h3 className="reveal font-serif text-[clamp(20px,2.4vw,26px)] leading-[1.15]">{name}</h3>
+      </div>
+    </div>
+  );
+}
+
+/** Photos in a single row, all the same height (each item is as wide as its aspect ratio). */
+function PhotoRow({ images }: { images: Img[] }) {
+  return (
+    <ul className="grid grid-cols-3 gap-3 sm:flex">
+      {images.map((img) => (
+        <li
+          key={img.src}
+          style={{ "--ar": img.width / img.height } as React.CSSProperties}
+          className="min-w-0 sm:[flex:var(--ar)_1_0%]"
+        >
+          <Pic img={img} cols={6} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Stages({ stages }: { stages: NonNullable<Section["stages"]> }) {
+  // Consecutive video stages are shown side by side, so the progression reads left to right.
+  type Block = { single: { st: Stage; n: number } } | { phones: { st: Stage; n: number }[] };
+  const blocks: Block[] = [];
+  stages.forEach((st, n) => {
+    const last = blocks[blocks.length - 1];
+    if (st.video && last && "phones" in last) last.phones.push({ st, n });
+    else if (st.video) blocks.push({ phones: [{ st, n }] });
+    else blocks.push({ single: { st, n } });
+  });
+
+  return (
+    <div className="space-y-16">
+      {blocks.map((b) =>
+        "single" in b ? (
+          <div key={b.single.st.name} className="space-y-5">
+            <StageHead n={b.single.n} total={stages.length} name={b.single.st.name} />
+            {b.single.st.image && <Pic img={b.single.st.image} />}
+            {b.single.st.images && <PhotoRow images={b.single.st.images} />}
+          </div>
+        ) : (
+          <div key={b.phones[0].st.name} className="relative">
+            {/* A line running through the stage badges, joining them into one progression. */}
+            <div aria-hidden="true" className="absolute left-4 right-4 top-[18px] hidden h-px bg-line sm:block" />
+            <PhoneSequence
+              items={b.phones.map(({ st, n }) => ({
+                head: <StageHead n={n} total={stages.length} name={st.name} />,
+                video: st.video!,
+              }))}
+            />
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
+  const m = wide ? "" : "max-w-[62ch]";
+  return (
+    <div className="space-y-8">
+      {s.galleryTop && <GalleryView gallery={s.galleryTop} />}
+
+      {!s.statement && s.paras?.map((p) => <p key={p} className={`reveal ${m}`}>{p}</p>)}
+
+      {s.galleryMid && <GalleryView gallery={s.galleryMid} />}
+      {s.sketchViewer && (
+        <Collapse label={s.sketchViewer.title}>
+          <SketchViewer bare title={s.sketchViewer.title} items={s.sketchViewer.images} />
+        </Collapse>
+      )}
+
+      {s.splitGallery && s.gallery ? (
+        <div className="grid items-center gap-8 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          <div className="reveal order-2">
+            {s.intro && (
+              <h3 className="mb-4 font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.2]">{s.intro}</h3>
+            )}
+            {s.bullets && (
+              <ul className="list-disc space-y-2 pl-5 marker:text-teal">
+                {s.bullets.map((b) => <li key={b}>{b}</li>)}
+              </ul>
+            )}
+          </div>
+          <div className="order-1">
+            <GalleryView gallery={s.gallery} />
+          </div>
+        </div>
+      ) : (
+        (s.intro || s.bullets) && (
+          <div className={`reveal ${m}`}>
+            {s.intro && <p className="mb-3 font-bold">{s.intro}</p>}
+            {s.bullets && (
+              <ul className="list-disc space-y-2 pl-5 marker:text-teal">
+                {s.bullets.map((b) => <li key={b}>{b}</li>)}
+              </ul>
+            )}
+          </div>
+        )
+      )}
+
+      {s.stats && <StatCards stats={s.stats} pills={s.pills} />}
+
+      {s.plan && <ResearchPlan plan={s.plan} />}
+
+      {s.stages && <Stages stages={s.stages} />}
+
+      {s.imageCards && <ImageCards cards={s.imageCards} />}
+
+      {s.cards && s.cardCols === 3 && s.numbered && (
+        <ol className="grid gap-4 sm:grid-cols-3">
+          {s.cards.map((c, n) => (
+            <li key={c.title} className={`${glass} reveal flex flex-col gap-3 p-5`}>
+              <span aria-hidden="true" className="font-serif text-[28px] leading-none text-teal-deep">
+                {String(n + 1).padStart(2, "0")}
+              </span>
+              <h3 className="font-serif text-[clamp(20px,2.2vw,24px)] leading-[1.15]">{c.title}</h3>
+              <p className="text-[16px] leading-snug">{c.text}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {s.cards && s.cardCols === 3 && !s.numbered && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          {s.cards.map((c) => (
+            <div key={c.title} className={`${glass} reveal flex flex-col gap-3 p-5`}>
+              {c.icon && (
+                <Image
+                  src={c.icon.src}
+                  alt={c.icon.alt}
+                  width={c.icon.width}
+                  height={c.icon.height}
+                  quality={90}
+                  sizes="112px"
+                  className="mx-auto size-24 sm:size-28"
+                />
+              )}
+              <h3 className="font-serif text-[clamp(20px,2.2vw,24px)] leading-[1.15]">{c.title}</h3>
+              <p className="text-[16px] leading-snug">{c.text}</p>
+              {c.solution && (
+                <p className="mt-auto border-t border-line pt-3 text-[16px] leading-snug">
+                  <span className="mb-1 block font-bold text-teal-deep">Solution:</span>
+                  {c.solution}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {s.cards && s.numbered && !s.cardCols && (
+        <ol className="space-y-10">
+          {s.cards.map((c, n) => (
+            <li key={c.title} className="reveal flex gap-5">
+              <span aria-hidden="true" className="w-12 shrink-0 font-serif text-[28px] leading-none text-teal-deep">
+                {String(n + 1).padStart(2, "0")}
+              </span>
+              <div className={wide ? "" : "max-w-[56ch]"}>
+                <h3 className="mb-1 font-serif text-[clamp(20px,2.4vw,24px)] leading-[1.2]">{c.title}</h3>
+                <p>{c.text}</p>
+                {c.solution && (
+                  <p className="mt-2">
+                    <span className="font-bold text-teal-deep">Solution: </span>
+                    {c.solution}
+                  </p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {s.cards && !s.numbered && !s.cardCols && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {s.cards.map((c) => (
+            <div key={c.title} className={`${glass} reveal p-5`}>
+              <h3 className="mb-2 text-[19px] font-bold leading-snug">{c.title}</h3>
+              <p className="text-[17px]">{c.text}</p>
+              {c.solution && (
+                <p className="mt-2 text-[17px]">
+                  <span className="font-bold text-teal-deep">Solution: </span>
+                  {c.solution}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {s.profiles?.map((pr) => <ProfileView key={pr.title} profile={pr} />)}
+
+      {s.features && (
+        <div className="space-y-14">
+          {s.features.map((f, n) => <FeatureView key={f.heading} feature={f} flip={n % 2 === 1} />)}
+        </div>
+      )}
+
+      {s.gallery && !s.splitGallery && <GalleryView gallery={s.gallery} />}
+
+      {s.figure && <Fig figure={s.figure} />}
+
+      {s.findings?.map((f) => (
+        <article key={f.title} className="space-y-5">
+          <div className="reveal">
+            <p
+              className={`mb-3 inline-block rounded-full border px-3 py-0.5 text-xs font-bold ${
+                f.severity === "Low" ? "border-line bg-white/60" : "border-deep bg-coral"
+              }`}
+            >
+              {f.severity} severity
+            </p>
+            <h3 className="font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.2]">{f.title}</h3>
+          </div>
+          {f.media && <Media label={f.media} />}
+          <ul className="reveal list-disc space-y-2 pl-5 marker:text-teal">
+            {f.points.map((pt) => <li key={pt}>{pt}</li>)}
+          </ul>
+          {f.quotes?.map((q) => <Quote key={q.text} {...q} />)}
+          {f.figure && <Fig figure={f.figure} />}
+          <div className={`${glass} reveal p-5`}>
+            <p className="mb-2 text-[15px] font-bold">Recommendations</p>
+            <ul className="list-disc space-y-2 pl-5 text-[17px] marker:text-coral">
+              {f.recs.map((r) => <li key={r}>{r}</li>)}
+            </ul>
+          </div>
+        </article>
+      ))}
+
+      {s.media?.map((md) => <Media key={md} label={md} />)}
+
+      {s.quote && <Quote {...s.quote} />}
+
+      {s.subsections?.map((sub) => <SubSection key={sub.heading} s={sub} wide={wide} />)}
+    </div>
+  );
+}
+
+/** Wraps a section's body in a show/hide control or a desaturated image backdrop, when it asks for one. */
+function Framed({ s, wide }: { s: Section; wide?: boolean }) {
+  const body = <SectionBody s={s} wide={wide} />;
+  if (s.collapsible) {
+    return <Collapse label={s.collapseLabel ?? "Show details"}>{body}</Collapse>;
+  }
+  if (s.backdrop) {
+    return (
+      <div className="relative overflow-hidden rounded-card border border-line">
+        <Image
+          src={s.backdrop.src}
+          alt=""
+          fill
+          sizes="(min-width: 800px) 752px, 100vw"
+          className="object-cover grayscale"
+        />
+        <div aria-hidden="true" className="absolute inset-0 bg-page/80" />
+        <div className="relative p-6 sm:p-10">{body}</div>
+      </div>
+    );
+  }
+  return body;
+}
+
+function SubSection({ s, wide }: { s: Section; wide?: boolean }) {
+  const id = slugify(s.heading);
+  return (
+    <div id={id} className={s.noHeading ? "scroll-mt-28" : "scroll-mt-28 border-t border-line pt-12"}>
+      {!s.noHeading && s.labelOnly && (
+        <p className="reveal mb-6 text-[15px] font-bold text-teal-deep">{s.heading}</p>
+      )}
+      {!s.noHeading && !s.labelOnly && (
+        <>
+          {s.title && <p className="reveal mb-3 text-[15px] font-bold text-teal-deep">{s.heading}</p>}
+          <h3 className="reveal mb-6 font-serif text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.02em]">
+            {s.title ?? s.heading}
+          </h3>
+        </>
+      )}
+      <Framed s={s} wide={wide} />
+    </div>
+  );
+}
+
+function SectionBlock({ s, wide }: { s: Section; wide?: boolean }) {
+  const id = slugify(s.heading);
+  return (
+    <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-28 border-t border-line py-16">
+      {s.statement ? (
+        <>
+          <p className="reveal mb-4 text-[15px] font-bold text-teal-deep">{s.heading}</p>
+          <h2 id={`${id}-h`} className="reveal font-serif text-[clamp(28px,4vw,40px)] leading-[1.15] tracking-[-0.02em]">
+            {s.paras?.[0]}
+          </h2>
+        </>
+      ) : (
+        <>
+          {s.title && <p className="reveal mb-3 text-[15px] font-bold text-teal-deep">{s.heading}</p>}
+          <h2 id={`${id}-h`} className="reveal mb-8 font-serif text-[clamp(28px,4vw,40px)] leading-[1.1] tracking-[-0.02em]">
+            {s.title ?? s.heading}
+          </h2>
+          <Framed s={s} wide={wide} />
+        </>
+      )}
+    </section>
+  );
+}
+
 function Quote({ text, by }: { text: string; by: string }) {
   return (
     <blockquote className="reveal border-l-4 border-teal pl-5">
@@ -84,6 +699,9 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
   const project = getProject(slug);
   if (!project) notFound();
 
+  // The page header: a dedicated photo if the project has one, otherwise the same image as its homepage card.
+  const hero = project.headerImage ?? project.heroImage;
+  const photoHeader = Boolean(project.headerImage);
   const index = projects.findIndex((p) => p.slug === slug);
   const next = projects[(index + 1) % projects.length];
   const tracker = [
@@ -100,33 +718,37 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
       <SiteNav />
       <CaseTracker items={tracker} />
 
-      <main id="top" className={`overflow-x-clip bg-[linear-gradient(to_bottom,var(--color-fade),var(--color-page)_520px)] ${project.heroImage ? "" : "pt-28"}`}>
+      <main id="top" className={`overflow-x-clip bg-[linear-gradient(to_bottom,var(--color-fade),var(--color-page)_520px)] ${hero ? "" : "pt-28"}`}>
         {/* Hero image: pinned to the top of the page; the content below scrolls up and over it. Full bleed to the right, fading out on the left so the side tracker stays readable. */}
-        {project.heroImage && (
-          <div className="sticky top-0 z-0 h-[clamp(360px,62svh,640px)] md:h-[clamp(480px,min(78svh,calc(58.5vw)),820px)]">
-            <div className="absolute inset-y-0 right-0 w-full md:w-[90%]">
+        {hero && (
+          <div className="sticky top-0 z-0 h-[clamp(240px,44svh,440px)] md:h-[clamp(300px,min(55svh,calc(58.5vw)),820px)]">
+            <div className={`absolute inset-y-0 right-0 w-full md:w-[90%] ${photoHeader ? "xl:w-[calc(100%-14rem)]" : ""}`}>
+              {project.headerVideo && photoHeader ? (
+                <HeaderVideo mp4={project.headerVideo.mp4} webm={project.headerVideo.webm} poster={hero.src} alt={hero.alt} className={`object-[50%_50%] md:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_6%)] md:[mask-image:linear-gradient(to_right,transparent_0%,black_6%)]`} />
+              ) : (
               <Image
-                src={project.heroImage.src}
-                alt={project.heroImage.alt}
+                src={hero.src}
+                alt={hero.alt}
                 fill
                 quality={90}
                 sizes="(min-width: 768px) 90vw, 100vw"
                 preload
-                className="object-cover object-[35%_50%] md:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_22%)] md:[mask-image:linear-gradient(to_right,transparent_0%,black_22%)]"
+                className={`object-cover ${photoHeader ? "object-[40%_50%] md:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_6%)] md:[mask-image:linear-gradient(to_right,transparent_0%,black_6%)]" : "object-[35%_50%] md:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_22%)] md:[mask-image:linear-gradient(to_right,transparent_0%,black_22%)]"}`}
               />
+              )}
             </div>
           </div>
         )}
-        <div className={project.heroImage ? "relative z-10 bg-page pt-4" : ""}>
-        {project.heroImage && (
+        <div className={hero ? "relative z-10 bg-page pt-4" : ""}>
+        {hero && (
           <div
             aria-hidden="true"
             className="stripe-edge pointer-events-none absolute inset-x-0 top-0"
-            style={{ "--stripe-rgb": project.heroImage.stripeRgb } as React.CSSProperties}
+            style={{ "--stripe-rgb": hero.stripeRgb } as React.CSSProperties}
           />
         )}
         <div className="mx-auto max-w-[800px] px-6">
-          {!project.heroImage && <Media label={project.heroMedia} hero />}
+          {!hero && <Media label={project.heroMedia} hero />}
 
           {/* Title */}
           <header className="pb-14 pt-10">
@@ -150,7 +772,13 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
               {project.logo && <span aria-hidden="true" className="h-10 w-px bg-deep/25 sm:h-12" />}
               <span className="font-normal text-muted">{project.logo ? "" : "· "}{project.kicker.split("·")[1]?.trim() ?? project.kicker}</span>
             </p>
-            <h1 className="mb-6 font-serif text-[clamp(36px,6vw,60px)] leading-[1.05] tracking-[-0.02em]">
+            <h1
+              className={`mb-6 font-serif leading-[1.05] tracking-[-0.02em] ${
+                project.headline.length > 100
+                  ? "text-[clamp(28px,4.2vw,44px)] leading-[1.15]"
+                  : "text-[clamp(36px,6vw,60px)]"
+              }`}
+            >
               {project.headline}
             </h1>
             <ul className="flex flex-wrap gap-2">
@@ -164,126 +792,81 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
 
           {/* TL;DR */}
           <section id="tldr" aria-labelledby="tldr-h" className="scroll-mt-28 pb-14">
-            <p id="tldr-h" className="reveal mb-4 text-[15px] font-bold text-teal-deep">TL;DR</p>
-            <dl className="reveal mb-8 space-y-4">
-              {project.tldr.map((t) => (
-                <div key={t.label} className="grid gap-1 sm:grid-cols-[110px_1fr] sm:gap-6">
-                  <dt className="text-[15px] font-bold">{t.label}</dt>
-                  <dd>{t.text}</dd>
+            <h2 id="tldr-h" className="reveal mb-8 font-serif text-[clamp(28px,4vw,40px)] leading-[1.1] tracking-[-0.02em]">TL;DR</h2>
+            <div className="mb-8 grid items-center gap-8 md:grid-cols-[minmax(0,380px)_1fr] md:gap-10">
+                <dl className="reveal space-y-4">
+                  {project.tldr.map((t) => (
+                    <div key={t.label} className="grid gap-1">
+                      <dt className="text-[15px] font-bold">
+                        {t.href ? (
+                          <a href={t.href} className="underline decoration-line underline-offset-4 hover:text-dusk">
+                            {t.label} <span aria-hidden="true">↓</span>
+                          </a>
+                        ) : (
+                          t.label
+                        )}
+                      </dt>
+                      <dd>{t.text}</dd>
+                    </div>
+                  ))}
+                </dl>
+              {project.cardVideo && (
+                <div className="reveal flex flex-col items-center">
+                  <CardVideo
+                    {...project.cardVideo}
+                    className="h-auto w-full max-w-[210px]"
+                  />
+                  {/* A soft shadow on the "ground" under the phone, so it reads as floating. */}
+                  <span aria-hidden="true" className="mt-3 block h-4 w-32 rounded-full bg-deep/30 blur-lg" />
                 </div>
-              ))}
-            </dl>
+              )}
+            </div>
 
-            <dl className={`${glass} reveal mb-6 grid gap-6 p-6 sm:grid-cols-2 sm:p-8`}>
+            <dl className={`${glass} reveal grid gap-x-10 gap-y-8 p-6 sm:grid-cols-2 sm:p-8 ${project.hideStats ? "" : "mb-6"}`}>
               {project.meta.map((m) => (
                 <div key={m.label}>
-                  <dt className="mb-1 text-[15px] font-bold text-muted">{m.label}</dt>
-                  <dd>{m.value}</dd>
+                  <dt className="mb-2 text-[15px] font-bold uppercase tracking-[0.12em] text-muted">{m.label}</dt>
+                  {(Array.isArray(m.value) ? m.value : [m.value]).map((v) => (
+                    <dd key={v} className="leading-snug">{v}</dd>
+                  ))}
                 </div>
               ))}
             </dl>
 
-            <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {project.stats.map((s) => (
-                <div key={s.label} className={`${glass} reveal p-4`}>
-                  <dd className="font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.1]">{s.value}</dd>
-                  <dt className="mt-1 text-[15px]">{s.label}</dt>
-                </div>
-              ))}
-            </dl>
+            {!project.hideStats && (
+              <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {project.stats.map((s) => (
+                  <div key={s.label} className={`${glass} reveal p-4`}>
+                    <dd className="font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.1]">{s.value}</dd>
+                    <dt className="mt-1 text-[15px]">{s.label}</dt>
+                  </div>
+                ))}
+              </dl>
+            )}
+
+            {project.lead && (
+              <div className="mt-10">
+                <Pic img={project.lead} />
+              </div>
+            )}
 
             {project.note && (
               <p className={`${glass} reveal mt-6 px-5 py-3 text-[15px] font-bold`}>{project.note}</p>
             )}
           </section>
 
+          {/* Showcase video */}
+          {project.showcase && (
+            <section aria-labelledby="showcase-h" className="reveal scroll-mt-28 pb-14">
+              <h2 id="showcase-h" className="mb-6 font-serif text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.02em]">
+                {project.showcase.label}
+              </h2>
+              <YouTubeEmbed id={project.showcase.id} title={project.showcase.title} poster={project.showcase.poster} />
+            </section>
+          )}
+
           {/* Sections */}
-          {project.sections.map((s) => {
-            const id = slugify(s.heading);
-            return (
-              <section key={id} id={id} aria-labelledby={`${id}-h`} className="scroll-mt-28 border-t border-line py-16">
-                <p className="reveal mb-3 text-[15px] font-bold text-teal-deep">{s.heading}</p>
-                <h2 id={`${id}-h`} className="reveal mb-8 font-serif text-[clamp(28px,4vw,40px)] leading-[1.1] tracking-[-0.02em]">
-                  {s.title}
-                </h2>
-
-                <div className="space-y-8">
-                  {s.paras?.map((p) => <p key={p} className="reveal max-w-[62ch]">{p}</p>)}
-
-                  {(s.intro || s.bullets) && (
-                    <div className="reveal max-w-[62ch]">
-                      {s.intro && <p className="mb-3 font-bold">{s.intro}</p>}
-                      {s.bullets && (
-                        <ul className="list-disc space-y-2 pl-5 marker:text-teal">
-                          {s.bullets.map((b) => <li key={b}>{b}</li>)}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-
-                  {s.cards && s.numbered && (
-                    <ol className="space-y-10">
-                      {s.cards.map((c, n) => (
-                        <li key={c.title} className="reveal flex gap-5">
-                          <span aria-hidden="true" className="w-12 shrink-0 font-serif text-[28px] leading-none text-teal-deep">
-                            {String(n + 1).padStart(2, "0")}
-                          </span>
-                          <div className="max-w-[56ch]">
-                            <h3 className="mb-1 text-[18px] font-bold leading-snug">{c.title}</h3>
-                            <p>{c.text}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-
-                  {s.cards && !s.numbered && (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {s.cards.map((c) => (
-                        <div key={c.title} className={`${glass} reveal p-5`}>
-                          <h3 className="mb-2 text-[19px] font-bold leading-snug">{c.title}</h3>
-                          <p className="text-[17px]">{c.text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {s.figure && <Fig figure={s.figure} />}
-
-                  {s.findings?.map((f) => (
-                    <article key={f.title} className="space-y-5">
-                      <div className="reveal">
-                        <p
-                          className={`mb-3 inline-block rounded-full border px-3 py-0.5 text-xs font-bold ${
-                            f.severity === "Low" ? "border-line bg-white/60" : "border-deep bg-coral"
-                          }`}
-                        >
-                          {f.severity} severity
-                        </p>
-                        <h3 className="font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.2]">{f.title}</h3>
-                      </div>
-                      {f.media && <Media label={f.media} />}
-                      <ul className="reveal list-disc space-y-2 pl-5 marker:text-teal">
-                        {f.points.map((pt) => <li key={pt}>{pt}</li>)}
-                      </ul>
-                      {f.quotes?.map((q) => <Quote key={q.text} {...q} />)}
-                      {f.figure && <Fig figure={f.figure} />}
-                      <div className={`${glass} reveal p-5`}>
-                        <p className="mb-2 text-[15px] font-bold">Recommendations</p>
-                        <ul className="list-disc space-y-2 pl-5 text-[17px] marker:text-coral">
-                          {f.recs.map((r) => <li key={r}>{r}</li>)}
-                        </ul>
-                      </div>
-                    </article>
-                  ))}
-
-                  {s.media?.map((m) => <Media key={m} label={m} />)}
-
-                  {s.quote && <Quote {...s.quote} />}
-                </div>
-              </section>
-            );
-          })}
+          {project.sections.map((s) => <SectionBlock key={s.heading} s={s} wide={project.wideText} />)}
 
           {/* Next project */}
           <section aria-labelledby="next-h" className="border-t border-line py-16">
