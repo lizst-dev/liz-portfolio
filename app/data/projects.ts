@@ -13,6 +13,8 @@ export type Img = {
   heading?: string;
   /** No frame, border or white backdrop: the image floats on the page. */
   bare?: boolean;
+  /** Cap the displayed width, in px (for phone screenshots and other small images). */
+  maxWidth?: number;
 };
 
 export type Gallery = {
@@ -59,7 +61,9 @@ export type Section = {
   intro?: string;
   paras?: string[];
   bullets?: string[];
-  cards?: { title: string; text: string; solution?: string; /** A small illustration shown beside the card (research-finding cards). */ icon?: Img }[];
+  /** Show the bullets as a row of cards instead of a list. */
+  bulletCards?: boolean;
+  cards?: { title?: string; text: string; /** A short list shown under the card (numbered cards): arrows lead from the group to its findings. */ list?: string[]; solution?: string; /** Short prompts shown as overlapping speech cards under the card text. */ bubbles?: string[]; /** A small illustration shown beside the card (research-finding cards). */ icon?: Img; /** A bare image shown to the right of a numbered card's text. */ aside?: Figure }[];
   /** 3 lays the cards out side by side with serif titles. */
   cardCols?: 3;
   /** A research plan: a duration, the methods used (with counts), and how they were synthesized. */
@@ -104,7 +108,35 @@ export type Section = {
   gallery?: Gallery;
   quote?: { text: string; by: string };
   findings?: Finding[];
+  /** Numbered groups of findings; each finding opens to show its evidence and recommendations. */
+  outline?: FindingGroup[];
   figure?: Figure;
+  charts?: ChartData[];
+  /** A small row of severity levels, shown as colored badges only. */
+  scale?: { level: "Low" | "Medium" | "High"; /** With text: a full card. Without: just the badge. */ text?: string }[];
+  /** Keep the section's name pinned in the left margin while scrolling through it. */
+  stickyLabel?: boolean;
+};
+
+export type FindingLite = {
+  title: string;
+  /** One line, always visible under the title. */
+  takeaway: string;
+  severity: "Low" | "Medium" | "High";
+  /** What we saw: one to three short points. */
+  points: string[];
+  quote?: { text: string; by: string };
+  figure?: Figure;
+  /** Placeholder for an image to come, used when there's no figure: "Kind: what it should show". */
+  media?: string;
+  recs: string[];
+};
+
+export type FindingGroup = {
+  title: string;
+  /** A wide placeholder under the group title, to break up the text. */
+  media?: string;
+  findings: FindingLite[];
 };
 
 export type Figure = {
@@ -113,26 +145,71 @@ export type Figure = {
   caption: string;
   width: number;
   height: number;
+  /** Transparent image shown straight on the page, without the card behind it. */
+  bare?: boolean;
+  /** Cap the displayed width, in px (for phone screenshots and other small images). */
+  maxWidth?: number;
+  /** Makes each page in the image clickable, opening it large with Previous/Next. */
+  viewer?: {
+    pages: { src: string; alt: string }[];
+    pageWidth: number;
+    pageHeight: number;
+    hotspots: { page: number; polygon: string }[];
+  };
+};
+
+export type ChartItem = { label: string; value: number; /** Draw this one in the accent color. */ accent?: boolean; /** Short note shown above a column. */ callout?: string };
+
+export type ChartData = {
+  kind: "columns" | "rows" | "pie";
+  title: string;
+  note?: string;
+  items: ChartItem[];
+  /** Number of responses, used for percentages. */
+  total?: number;
+  /** Show value only, no percentage. */
+  percent?: false;
+  axisLabel?: string;
+  legend?: { label: string; accent?: boolean }[];
+  caption?: string;
+  alt: string;
+};
+
+/** One column of a finding laid out as observation cards with a recommendation under each. */
+export type FindingColumn = {
+  title: string;
+  points: (string | { text: string; sub: string[] })[];
+  /** Leave out to show one shared recommendations card under all the columns. */
+  recs?: string[];
 };
 
 export type Finding = {
   title: string;
   severity: "Low" | "Medium" | "High";
-  points: string[];
+  points?: string[];
+  /** Lay the finding out as side-by-side cards, each with its own recommendation, instead of a bullet list. */
+  columns?: FindingColumn[];
   quotes?: { text: string; by: string }[];
   figure?: Figure;
+  /** Show the figure above the finding's columns instead of below. */
+  figureFirst?: boolean;
+  /** A participant quote shown as a comic-style speech bubble above the finding's cards. */
+  bubble?: { text: string; by: string };
+  chart?: ChartData;
   media?: string;
-  recs: string[];
+  recs?: string[];
 };
 
 export type Project = {
   slug: string;
   heroMedia: string;
   /** When set, shown in place of the labeled hero placeholder. */
-  /** A photo used as the case study page's header in place of `heroImage` (which still drives the homepage card). It is a photograph, so it fades out over a narrow strip on its left edge and sits clear of the side tracker. */
-  headerImage?: { src: string; width: number; height: number; alt: string; /** Space-separated r g b of the image's bottom edge, used to tint the striped transition. */ stripeRgb: string };
-  /** Optional looping video layered over `headerImage` (which then acts as its poster / reduced-motion still). */
-  headerVideo?: { mp4: string; webm?: string };
+  /** A photo used as the case study page's header in place of `heroImage` (which still drives the homepage card). It runs full bleed across the top of the page. */
+  headerImage?: { src: string; width: number; height: number; alt: string; /** CSS object-position, e.g. "80% 100%". */ focus?: string; /** Space-separated r g b of the image's bottom edge, used to tint the striped transition. */ stripeRgb: string };
+  /** An animated 3D header (the printer-window scene) used in place of an image. `stripeRgb` tints the striped transition under it. */
+  headerScene?: { kind: "printer"; alt: string; stripeRgb: string };
+  /** A silent looping video laid over the page header (the header image stays underneath as the fallback and poster). */
+  headerVideo?: { mp4: string; webm?: string; /** CSS object-position for the video and its poster, e.g. "50% 100%". */ focus?: string };
   /** A phone screen recording shown on the homepage card in place of `heroImage`. */
   cardVideo?: { src: string; poster?: string; mask?: string; width: number; height: number; alt: string; /** CSS background behind the phone. */ background: string };
   /** A YouTube video shown right after the TL;DR, as a poster that loads the player only when clicked. */
@@ -179,6 +256,11 @@ export const projects: Project[] = [
       height: 832,
       alt: "Pixel-art illustration of an additive manufacturing floor: a technician at a large metal 3D printer, with more machines and a high steel-truss ceiling behind.",
       stripeRgb: "231 136 130",
+    },
+    headerScene: {
+      kind: "printer",
+      alt: "Animation of laser powder bed fusion seen through the printer's window: lasers fuse an impeller layer by layer in metal powder, then the powder is blown away from the finished silver part.",
+      stripeRgb: "38 41 48",
     },
     name: "Blue Origin",
     logo: { src: "/images/logos/blue-origin.png", width: 896, height: 472 },
@@ -782,6 +864,17 @@ export const projects: Project[] = [
   },
   {
     slug: "uber",
+    wideText: true,
+    headerImage: {
+      src: "/images/uber/header/header-static.jpg",
+      width: 2752,
+      height: 1536,
+      alt: "Illustration of a city street: a rider with a phone waits beside an Uber car at the curb.",
+      focus: "92% 100%",
+      stripeRgb: "243 243 243",
+    },
+    // The looping header video is parked for now: re-add headerVideo { mp4, webm, focus } to bring it back
+    // (files are in /images/uber/header/uber-header.mp4 and .webm).
     heroImage: {
       src: "/images/uber/hero-gemini.jpg",
       width: 1280,
@@ -791,22 +884,20 @@ export const projects: Project[] = [
     },
     heroMedia: "Image: hero shot of the Uber pickup map from a participant recording",
     name: "Uber",
+    logo: { src: "/images/logos/uber.png", width: 778, height: 275 },
     kicker: "UX research case study · Mobility",
     headline: "Why riders and drivers miss each other at pickup",
     tags: ["Usability study", "Mobility"],
     role: "UX researcher and PM · 10 weeks",
     cardSummary:
       "A usability study of the rendezvous phase, from driver acceptance to vehicle entry, at hard pickup spots: multi-level garages, inaccurate GPS, one-way streets, and dense urban blocks.",
-    stats: [
-      { value: "9", label: "participants" },
-      { value: "9", label: "findings across setup, navigation, and pickup" },
-      { value: "78%", label: "had a confusing pickup in the past three months" },
-      { value: "10 weeks", label: "HCDE 517 course project" },
-    ],
+    hideStats: true,
+    stats: [],
     meta: [
-      { label: "Role", value: "UX researcher and PM" },
-      { label: "Team", value: "Jenn Park, Grace Liu, Yudie Xia, and me" },
-      { label: "Context", value: "UW HCDE 517 Usability Studies, Winter 2026, in partnership with Uber" },
+      { label: "Role", value: ["UX Researcher", "PM"] },
+      { label: "Team", value: ["Jenn Park", "Grace Liu", "Yudie Xia", "Liz Overbeek"] },
+      { label: "Context", value: "Usability Studies course in partnership with Uber" },
+      { label: "Timeline", value: ["10 weeks", "Winter 2026"] },
     ],
     tldr: [
       {
@@ -826,23 +917,21 @@ export const projects: Project[] = [
       {
         heading: "Overview",
         title: "Where riders and drivers lose each other",
-        media: ["Diagram: the rendezvous phase, from driver acceptance to entering the vehicle"],
         paras: [
           "We studied the Uber rider mobile app, focusing on the pickup, or rendezvous, phase: interpreting the pickup location, navigating to the meeting point, tracking the driver's arrival, and coordinating with the driver. The target audience was riders who deal with complex pickup environments, such as multi-level pickup areas and places with GPS or coordination challenges.",
         ],
         intro: "Research questions",
         cards: [
-          { title: "Understanding", text: "How well do riders understand where to go for pickup?" },
-          { title: "Navigation", text: "How do riders navigate to confusing or complex pickup locations?" },
-          { title: "Coordination", text: "How effectively do riders coordinate with their driver during the rendezvous?" },
-          { title: "Information", text: "Do riders feel they have enough information to complete the pickup?" },
+          { text: "How well do riders understand where to go for pickup?" },
+          { text: "How do riders navigate to confusing or complex pickup locations?" },
+          { text: "How effectively do riders coordinate with their driver during the rendezvous?" },
+          { text: "Do riders feel they have enough information to complete the pickup?" },
         ],
       },
       {
         heading: "Methods",
-        title: "Four methods, one real pickup",
+        title: "How we ran the study",
         numbered: true,
-        media: ["Image: study setup showing the unmoderated test and think-aloud flow"],
         cards: [
           {
             title: "Screening survey",
@@ -851,14 +940,43 @@ export const projects: Project[] = [
           {
             title: "Unmoderated usability test",
             text: "Participants screen-recorded a real Uber pickup from booking to entering the vehicle, thinking aloud as they went. We focused on how they read the pickup pin, map cues, and driver location, and on what they did when the app's guidance didn't match the physical world.",
+            aside: {
+              src: "/images/uber/participant-materials.png",
+              alt: "Three pages of the participant instructions: the study purpose, think-aloud and recording instructions, and step-by-step study steps.",
+              caption: "",
+              width: 837,
+              height: 848,
+              bare: true,
+              viewer: {
+                pageWidth: 1445,
+                pageHeight: 1870,
+                pages: [
+                  { src: "/images/uber/participant-instructions-1.jpg", alt: "Participant instructions, page 1: purpose of the study, think-aloud instructions, and recording instructions." },
+                  { src: "/images/uber/participant-instructions-2.jpg", alt: "Participant instructions, page 2: privacy and the step-by-step study instructions." },
+                  { src: "/images/uber/participant-instructions-3.jpg", alt: "Participant instructions, page 3: the final steps once the ride is complete, and additional notes for the waiting period." },
+                ],
+                // The visible part of each page (the pages overlap, so these never do), as clip-path outlines in % of the image.
+                hotspots: [
+                  { page: 2, polygon: "polygon(32.6% 0.2%, 30.8% 14.9%, 49.1% 14.9%, 49.1% 35.4%, 54.0% 23.6%, 77.6% 32.8%, 80.9% 6.7%)" },
+                  { page: 1, polygon: "polygon(30.7% 79.8%, 75.9% 98.8%, 98.8% 41.0%, 54.0% 23.6%, 49.1% 35.4%, 49.1% 77.0%, 31.9% 77.0%)" },
+                  { page: 0, polygon: "polygon(0.2% 14.9%, 49.1% 14.9%, 49.1% 77.0%, 0.2% 77.0%)" },
+                ],
+              },
+            },
           },
           {
             title: "Post-test questionnaire",
-            text: "A five-point Likert scale across six dimensions of the pickup experience, with an open-ended “why” for each rating, so every number came with its reasoning.",
+            text: "A five-point Likert scale across six dimensions of the pickup experience, with an open-ended “why” for each rating, to inform our interview scripts, incorporating mixed-methods research.",
+            bubbles: ["How would you rate the clarity of your pickup location? Why did you choose the rating you did?"],
           },
           {
             title: "Post-test interview",
             text: "Remote and semi-structured, with questions ordered primary, secondary, then exploratory. It clarified in-app decisions, moments of hesitation, and trust in the app's guidance.",
+            bubbles: [
+              "How did you determine when and where the driver had arrived?",
+              "How did you understand where the pickup location was?",
+              "If you were picking up from this same location again, would you do anything differently next time?",
+            ],
           },
         ],
         paras: [
@@ -868,219 +986,286 @@ export const projects: Project[] = [
       {
         heading: "Participants",
         title: "Nine riders who knew hard pickups firsthand",
-        paras: [
-          "We recruited 9 participants through the screening survey. They were frequent, confident Uber users who mostly ride in urban areas, and many had recently had a confusing pickup.",
-        ],
+        paras: ["We recruited 9 participants for this study through a Screening Survey. Participants were frequent Uber users, highly confident with the app, and primarily riding in urban environments— many of whom had recently experienced confusing pickup situations."],
+        intro: "Criteria:",
+        bulletCards: true,
         bullets: [
-          "Criteria: used Uber 1 to 6 times in the past month, had experienced a confusing pickup, were aged 21 to 60, and were located in the United States.",
-          "Age: most were 22 to 30 (66.7%), with the rest split between 18 to 21 (11.1%) and 31 to 40 (22.2%).",
-          "Location: mainly Seattle, with several other U.S. cities.",
-          "Confidence: most rated themselves very confident with the app, with 55.6% giving a 4 out of 5.",
-          "Ride frequency: in the screening survey (10 responses), 50% had taken 1 to 3 Uber rides in the past month, 40% had taken 4 to 6, and 10% had taken 7 or more.",
-          "Recent pickups: 77.8% had a confusing or difficult pickup within the past three months.",
+          "Used Uber 1-6 times in the past month",
+          "Experienced a confusing pickup situation",
+          "Ages 21-60",
+          "Located in the United States",
         ],
-        figure: {
-          src: "/images/uber/usage-frequency.png",
-          alt: "Pie chart of screening survey responses to how many Uber rides people took in the past month: 50 percent took 1 to 3, 40 percent took 4 to 6, and 10 percent took 7 or more.",
-          caption: "Screening survey: rides taken with Uber in the past month (10 responses).",
-          width: 812,
-          height: 440,
-        },
+        charts: [
+          {
+            kind: "pie",
+            title: "Age range",
+            note: "9 responses",
+            total: 9,
+            items: [
+              { label: "22–30", value: 6 },
+              { label: "31–40", value: 2 },
+              { label: "18–21", value: 1 },
+            ],
+            alt: "Pie chart of participant ages from 9 responses: 66.7 percent were 22 to 30, 22.2 percent were 31 to 40, and 11.1 percent were 18 to 21.",
+          },
+          {
+            kind: "rows",
+            title: "Where are you located?",
+            note: "9 responses, closest major city",
+            total: 9,
+            items: [
+              { label: "Seattle", value: 3, accent: true },
+              { label: "Seattle, U District", value: 1 },
+              { label: "Bothell", value: 1 },
+              { label: "Bothell, WA", value: 1 },
+              { label: "Los Angeles", value: 1 },
+              { label: "Manhattan", value: 1 },
+              { label: "Scottsdale, Arizona", value: 1 },
+            ],
+            alt: "Bar chart of participant locations from 9 responses: 3 in Seattle, and 1 each in the Seattle U District, Bothell, Bothell WA, Los Angeles, Manhattan, and Scottsdale, Arizona.",
+          },
+          {
+            kind: "columns",
+            title: "How confident are you using the Uber app?",
+            note: "9 responses, 1 to 5",
+            total: 9,
+            items: [
+              { label: "1", value: 0 },
+              { label: "2", value: 0 },
+              { label: "3", value: 1 },
+              { label: "4", value: 5, accent: true },
+              { label: "5", value: 3 },
+            ],
+            alt: "Bar chart of confidence using the Uber app on a 1 to 5 scale from 9 responses: none rated 1 or 2, one rated 3, five rated 4 (55.6 percent), and three rated 5.",
+          },
+          {
+            kind: "rows",
+            title: "What kind of areas do you typically use Uber in?",
+            note: "9 responses",
+            total: 9,
+            items: [
+              { label: "Urban", value: 9, accent: true },
+              { label: "Suburban", value: 2 },
+              { label: "Rural", value: 0 },
+            ],
+            alt: "Bar chart of the areas participants typically use Uber in, from 9 responses: all 9 urban, 2 suburban, and none rural. Participants could pick more than one.",
+          },
+          {
+            kind: "pie",
+            title: "Rides with Uber in the past month",
+            note: "Screening survey, 10 responses",
+            total: 10,
+            items: [
+              { label: "1–3 rides", value: 5 },
+              { label: "4–6 rides", value: 4 },
+              { label: "7 or more", value: 1 },
+              { label: "None", value: 0 },
+            ],
+            alt: "Pie chart of rides taken with Uber in the past month from 10 screening survey responses: 50 percent took 1 to 3 rides, 40 percent took 4 to 6, and 10 percent took 7 or more.",
+          },
+          {
+            kind: "pie",
+            title: "A confusing or difficult pickup in the past 3 months?",
+            note: "9 responses",
+            total: 9,
+            items: [
+              { label: "Yes", value: 7 },
+              { label: "No", value: 2 },
+            ],
+            alt: "Pie chart of whether participants had a confusing or difficult pickup in the past three months from 9 responses: 7 said yes (77.8 percent) and 2 said no (22.2 percent).",
+          },
+        ],
       },
       {
         heading: "How we rated findings",
         title: "Three levels of severity",
-        media: ["Diagram: the low, medium, and high severity scale"],
         paras: [
-          "Each finding got a severity rating. Low means frustrating but not task-inhibiting. Medium means safety-related but not task-inhibiting. High means the task couldn't be completed. We found nine issues across setup, navigation, and pickup. None was rated high, and one was rated medium.",
+          "Each finding got a severity rating. We found nine issues across setup, navigation, and pickup. Most were rated low, one was rated medium, and none were rated high.",
+        ],
+        scale: [
+          { level: "Low", text: "Frustrating, but not task inhibiting" },
+          { level: "Medium", text: "Safety related, but not task inhibiting" },
+          { level: "High", text: "Task unable to be completed" },
         ],
       },
       {
-        heading: "Findings: setup",
-        title: "Riders don't trust where the app puts the pin",
-        findings: [
+        heading: "Findings",
+        title: "9 findings across 3 stages of the pickup",
+        paras: ["Select a finding to collapse or expand its details."],
+        outline: [
           {
-            title: "Pickup point suggestions erode trust",
-            severity: "Low",
-            media: "Screenshot: a suggested pickup spot far from the rider's intended spot",
-            points: [
-              "Suggested spots felt random: far away, impractical, or unrelated to what riders expected.",
-              "Riders didn't see or use any reasoning for why the app suggested a spot.",
-              "Riders felt the system overrode their intended spot through frequent pin changes and automatic location adjustments.",
-            ],
-            recs: [
-              "Explain the logic behind suggestions, such as safety or traffic flow, with context or visual cues.",
-              "Avoid unexpected pin changes.",
-              "Give riders transparent control over the pickup spot.",
-            ],
-          },
-          {
-            title: "Riders rely on instinct, not the app",
-            severity: "Low",
-            media: "Image: a rider waiting at a familiar, visible landmark",
-            points: [
-              "5 of 9 riders pick a spot and stay put, adjusting position only when they meet the driver, and choose visible or familiar places.",
-              "4 of 9 expect some hiccups, especially at airports or buildings with multiple entrances.",
-              "Riders' own judgment compensates for guidance that is unclear and imperfect.",
-            ],
-            recs: [
-              "Help riders find clearer, more reliable pickup spots: highlight visible landmarks, recommend simpler locations, or surface spots with many successful pickups.",
-              "Give clear feedback on distance and alignment between rider and driver to reduce coordination friction.",
-            ],
-          },
-        ],
-      },
-      {
-        heading: "Findings: navigation",
-        title: "The map, the GPS, and the side of the road",
-        findings: [
-          {
-            title: "The map is perceived as unreliable",
-            severity: "Low",
-            media: "Screenshot: the map in a dense area with no rotation or detail",
-            points: [
-              "Orientation is confusing, and details and markings are lacking, which leads to uncertainty and mistrust.",
-              "6 of 9 participants expressed frustration, yet average satisfaction on the questionnaire was 4.2 out of 5. Frustration isn't the same as dissatisfaction.",
-            ],
-            quotes: [
+            title: "Setup: Riders lose trust",
+            media: "Illustration: a rider setting up a pickup on their phone",
+            findings: [
               {
-                text: "The map itself doesn't rotate, so the orientation can sometimes be confusing. The arrow that shows direction can also be inaccurate, especially in areas with many buildings.",
-                by: "P5",
-              },
-              {
-                text: "Going off the Uber map, I would have assumed the spot I picked was a surface parking lot and I was getting picked up at the entrance.",
-                by: "P9, waiting at the top of a parking garage",
-              },
-            ],
-            recs: [
-              "Add more detailed visuals, like satellite view, street view, and sidewalks.",
-              "Introduce location selection for multi-level structures.",
-            ],
-          },
-          {
-            title: "GPS isn't accurate, which leads to mistrust",
-            severity: "Low",
-            media: "Screenshot: a driver marked as arrived away from the pickup pin",
-            points: [
-              "5 of 9 participants said the GPS wasn't followed: the driver didn't arrive at the pickup point the rider selected, which caused confusion.",
-              "Riders didn't follow the suggested path either when it wasn't the quickest, and the app only offers walking directions.",
-            ],
-            quotes: [
-              {
-                text: "If the Uber app shows that the driver has arrived, I assume they believe their current location is a better spot to stop or that they may think that location is the pickup point.",
-                by: "P5",
-              },
-            ],
-            recs: [
-              "Recalibrate GPS accuracy and clearly communicate how accurate it is.",
-              "Improve the ideal path experience.",
-              "Have a course of action to re-establish trust and safety when paths aren't followed.",
-            ],
-          },
-          {
-            title: "Side of the road is critical",
-            severity: "Medium",
-            media: "Screenshot: the pickup map with no street-side guidance",
-            points: [
-              "The app doesn't say which side of the road riders should wait on, which leads to confusion, unsafe street-crossing behavior, and traffic problems.",
-              "4 of 9 participants experienced this in the study, and more said in the interview that it comes up often.",
-            ],
-            quotes: [
-              {
-                text: "I often don't know which direction the car will approach from, so I'm not sure which side of the road I should stand on.",
-                by: "P6",
-              },
-            ],
-            recs: [
-              "Add explicit street-side guidance to the pickup map.",
-              "Align rider and driver positioning before the driver arrives.",
-            ],
-          },
-        ],
-      },
-      {
-        heading: "Findings: pickup",
-        title: "Finding the car takes more than the map",
-        findings: [
-          {
-            title: "Locating the driver takes more than the map",
-            severity: "Low",
-            media: "Screenshot: vehicle details on the ride screen",
-            points: [
-              "Riders identify their ride by the vehicle's color, model, and license plate.",
-              "They read road conditions and their surroundings to predict where the driver will arrive.",
-              "2 of 9 riders messaged their driver during pickup.",
-            ],
-            recs: [
-              "Provide adequate vehicle identification information.",
-              "Suggest pickup points that reflect traffic flow and whether a car can actually stop there.",
-            ],
-          },
-          {
-            title: "Complex environments and driver inconsistency reduce confidence",
-            severity: "Low",
-            points: [
-              "Drivers may not stop at the exact pickup spot. 5 of 9 participants saw this, shaped by traffic and parking availability.",
-              "Intersections and busy streets make stopping unpredictable, and drivers vary in navigation and communication skills, so pickup reliability feels inconsistent.",
-              "In the questionnaire, 7 of 9 riders rated their trust in the Uber system during pickup a 4 or 5. The two lower ratings, a 2 and a 3, traced back to time pressure from an off-pin pickup and to side-of-road ambiguity.",
-            ],
-            quotes: [
-              {
-                text: "The driver thought she had already arrived at the pickup point and expected me to run across the street to her, but I was still on the other side of the road.",
-                by: "P5",
-              },
-              {
-                text: "I asked if they would come to the top floor, and they declined and had me go down to the bottom floor.",
-                by: "P9",
-              },
-            ],
-            figure: {
-              src: "/images/uber/trust-in-pickup.png",
-              alt: "Bar chart of trust in the Uber system during pickup on a 1 to 5 scale from 9 responses: none rated 1, one rated 2, one rated 3, five rated 4, and two rated 5. The 2 is annotated as time pressure from off-pin pickup and the 3 as side-of-road ambiguity.",
-              caption: "Questionnaire: trust in the Uber system during pickup, 1 to 5 (9 responses).",
-              width: 2000,
-              height: 690,
+                title: "Pickup point suggestions erode trust",
+                takeaway: "Suggested spots feel arbitrary, and riders can't see why they were chosen or override them.",
+                severity: "Low",
+                points: [
+                  "Suggested spots feel far away, impractical, or unrelated to what riders expect, and riders didn't see or use the reasoning behind them.",
+                  "Frequent pin changes and automatic location adjustments make riders feel the system overrides their intended spot.",
+                ],
+                figure: {
+              src: "/images/uber/pickup-spot-screen-hd.png",
+              alt: "Uber app screen asking the rider to set their pickup spot, with the pin on a map and a suggested spot far from where they wanted to be picked up.",
+              caption: "",
+              width: 705,
+              height: 1452,
+              bare: true,
+              maxWidth: 200,
             },
-            recs: [
-              "Suggest pickup points based on traffic and safe stopping.",
-              "Clarify the exact pickup location: entrance, level, and side of the street.",
-              "Give drivers clearer guidance on where to stop.",
-            ],
-          },
-          {
-            title: "Inaccurate arrival signals and countdown timers add stress",
-            severity: "Low",
-            media: "Screenshot: the countdown timer and ETA",
-            points: [
-              "The ETA doesn't reflect real pickup conditions, and the app marked a driver as arrived at a red light, before the actual pickup spot.",
-              "Countdown timers made riders feel rushed even when the driver was still some distance from the pickup spot.",
-            ],
-            quotes: [
-              { text: "App countdown timer makes it more stressful.", by: "P1" },
-              { text: "The pickup time estimate is not accurate.", by: "P6" },
-            ],
-            recs: [
-              "Detect true pickup proximity more reliably.",
-              "Design to reduce the pressure from countdown timers.",
-            ],
-          },
-          {
-            title: "Hidden cancellation fee logic creates anxiety",
-            severity: "Low",
-            media: "Screenshot: the cancellation fee prompt",
-            points: [
-              "Cancellation fees follow defined rules, but how they're calculated isn't apparent in the interface.",
-            ],
-            quotes: [
+                recs: [
+                  "Explain why a spot was suggested, such as safety or traffic flow.",
+                  "Avoid unexpected pin changes and give riders transparent control over the pickup spot.",
+                ],
+              },
               {
-                text: "The cancellation fee feels a bit unclear. I might want to cancel, but I don't know exactly when the fee starts, so I prefer to have more information about that.",
-                by: "P6",
+                title: "Riders rely on instinct, not the app",
+                takeaway: "Riders pick a visible, familiar spot and stay put, expecting some friction.",
+                severity: "Low",
+                media: "Photo: a rider waiting at a familiar, visible landmark",
+                points: [
+                  "5 of 9 riders adjust their position only when meeting the driver, and choose visible or familiar locations.",
+                  "4 of 9 expect hiccups, especially at airports or buildings with multiple entrances.",
+                ],
+                quote: { text: "Usually I would choose to get picked up at the company entrance because the company has a clear sign and a logo, making it easier for the driver.", by: "P4" },
+                recs: [
+                  "Help riders find clearer pickup spots: highlight visible landmarks and surface spots with many successful pickups.",
+                  "Give clear feedback on distance and alignment between rider and driver.",
+                ],
               },
             ],
-            recs: [
-              "Show when cancellation fees apply.",
-              "Explain why fees vary, such as by location or demand.",
-              "Provide a clear fee breakdown.",
+          },
+          {
+            title: "Navigation: Map and GPS at odds",
+            media: "Illustration: a rider following the map while the car waits elsewhere",
+            findings: [
+              {
+                title: "The map is perceived as unreliable",
+                takeaway: "Orientation is confusing and details are lacking, which leads to uncertainty and mistrust.",
+                severity: "Low",
+                points: [
+                  "6 of 9 participants expressed frustration, yet average satisfaction on the questionnaire was about 4 out of 5. Frustration isn't the same as dissatisfaction.",
+                ],
+                quote: {
+                  text: "The map itself doesn't rotate, so the orientation can sometimes be confusing. The arrow that shows direction can also be inaccurate, especially in areas with many buildings.",
+                  by: "P5",
+                },
+                figure: {
+              src: "/images/uber/map-screen-hd.png",
+              alt: "Uber app map of a dense New York City area, shown without rotation or detail, with the pickup panel still loading below.",
+              caption: "",
+              width: 702,
+              height: 1482,
+              bare: true,
+              maxWidth: 200,
+            },
+                recs: [
+                  "Add more detailed visuals, like satellite view, street view, and sidewalks.",
+                  "Introduce location selection for multi-level structures.",
+                ],
+              },
+              {
+                title: "GPS isn't accurate, which leads to mistrust",
+                takeaway: "Drivers often don't arrive at the pin the rider chose, and riders skip suggested paths that aren't the quickest.",
+                severity: "Low",
+                media: "Screenshot: a driver marked as arrived away from the pickup pin",
+                points: [
+                  "5 of 9 participants said the GPS wasn't followed: the driver didn't arrive at the pickup point the rider selected, which caused confusion.",
+                  "The app only offers walking directions, and riders didn't follow the suggested path when it wasn't the quickest.",
+                ],
+                quote: {
+                  text: "If the Uber app shows that the driver has arrived, I assume they believe their current location is a better spot to stop or that they may think that location is the pickup point.",
+                  by: "P5",
+                },
+                recs: [
+                  "Recalibrate GPS accuracy and clearly communicate how accurate it is.",
+                  "Have a course of action to re-establish trust and safety when paths aren't followed.",
+                ],
+              },
+              {
+                title: "Side of the road is critical",
+                takeaway: "The app doesn't say which side of the road to wait on, which raises a safety concern.",
+                severity: "Medium",
+                media: "Screenshot: the pickup map with no street-side guidance",
+                points: [
+                  "Riders are confused about where to stand, which leads to unsafe street-crossing behavior and traffic problems.",
+                  "4 of 9 participants experienced this in the study, and more said in the interview that it comes up often.",
+                ],
+                quote: { text: "I often don't know which direction the car will approach from, so I'm not sure which side of the road I should stand on.", by: "P6" },
+                recs: [
+                  "Add explicit street-side guidance to the pickup map.",
+                  "Align rider and driver positioning before the driver arrives.",
+                ],
+              },
+            ],
+          },
+          {
+            title: "Pickup: Finding the car is hard",
+            media: "Illustration: a rider and a driver looking for each other on a busy street",
+            findings: [
+              {
+                title: "Locating the driver takes more than the map",
+                takeaway: "Riders match the car by its details and read the road to guess where it will stop.",
+                severity: "Low",
+                media: "Screenshot: vehicle details on the ride screen",
+                points: [
+                  "Riders identify their ride by the vehicle's color, model, and license plate.",
+                  "They read road conditions and their surroundings to predict where the driver will arrive.",
+                ],
+                recs: [
+                  "Provide adequate vehicle identification information.",
+                  "Suggest pickup points that reflect traffic flow and whether a car can actually stop there.",
+                ],
+              },
+              {
+                title: "Complex environments and driver inconsistency reduce confidence",
+                takeaway: "Drivers often don't stop at the exact pickup spot, so reliability feels inconsistent.",
+                severity: "Low",
+                media: "Illustration: a driver stopping across the street from a rider",
+                points: [
+                  "5 of 9 participants saw drivers stop away from the pickup spot, shaped by traffic and parking availability.",
+                  "7 of 9 riders still rated their trust in Uber during pickup a 4 or 5. The two lower ratings traced back to time pressure from an off-pin pickup and side-of-road ambiguity.",
+                ],
+                quote: {
+                  text: "The driver thought she had already arrived at the pickup point and expected me to run across the street to her, but I was still on the other side of the road.",
+                  by: "P5",
+                },
+                recs: [
+                  "Clarify the exact pickup location: entrance, level, and side of the street.",
+                  "Give drivers clearer guidance on where to stop.",
+                ],
+              },
+              {
+                title: "Inaccurate arrival signals and countdown timers add stress",
+                takeaway: "The ETA doesn't reflect real conditions, and countdown timers make riders feel rushed.",
+                severity: "Low",
+                media: "Screenshot: the countdown timer and ETA",
+                points: [
+                  "The app marked a driver as arrived at a red light, before the actual pickup spot.",
+                  "Timers made riders feel rushed even when the driver was still some distance away.",
+                ],
+                quote: { text: "App countdown timer makes it more stressful.", by: "P1" },
+                recs: [
+                  "Detect true pickup proximity more reliably.",
+                  "Design to reduce the pressure from countdown timers.",
+                ],
+              },
+              {
+                title: "Hidden cancellation fee logic creates anxiety",
+                takeaway: "Fees follow defined rules, but how they're calculated isn't apparent in the interface.",
+                severity: "Low",
+                media: "Screenshot: the cancellation fee prompt",
+                points: ["Riders want to know exactly when a fee starts before they decide to cancel."],
+                quote: {
+                  text: "The cancellation fee feels a bit unclear. I might want to cancel, but I don't know exactly when the fee starts, so I prefer to have more information about that.",
+                  by: "P6",
+                },
+                recs: [
+                  "Show when cancellation fees apply and explain why they vary, such as by location or demand.",
+                  "Provide a clear fee breakdown.",
+                ],
+              },
             ],
           },
         ],

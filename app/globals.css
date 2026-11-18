@@ -17,11 +17,11 @@
   --color-card: #fff9ee;
   --color-muted: #6b6256;
 
-  /* Headings: Array Regular. */
-  --font-serif: var(--font-array), system-ui, sans-serif;
+  /* Headings: Newsreader Medium. */
+  --font-serif: var(--font-newsreader), Georgia, serif;
   /* Display: Unbounded SemiBold, used for the name only (hero and nav pill). */
   --font-display: var(--font-unbounded), system-ui, sans-serif;
-  --font-body: var(--font-khand), system-ui, sans-serif;
+  --font-body: var(--font-source-sans), system-ui, sans-serif;
   --color-line: #dccaa9;
 
   --shadow-nav: 0 2px 6px rgb(28 41 39 / 0.15);
@@ -40,8 +40,8 @@
 }
 
 h1, h2, h3 {
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 html {
@@ -53,9 +53,9 @@ body {
   background: var(--color-page);
   color: var(--color-deep);
   font-family: var(--font-body);
-  font-size: 19px;
-  line-height: 1.5;
-  letter-spacing: -0.01em;
+  font-size: 18px;
+  line-height: 1.55;
+  letter-spacing: 0;
 }
 
 :focus-visible {
@@ -84,12 +84,31 @@ body {
   from { scale: 0 1; }
   to { scale: 1 1; }
 }
+@keyframes bar-v {
+  from { transform: scaleY(0); }
+}
+@keyframes bar-h {
+  from { transform: scaleX(0); }
+}
+
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .reveal {
       animation: reveal-in linear both;
       animation-timeline: view();
       animation-range: entry 5% entry 40%;
+    }
+    .chart-bar-v {
+      transform-origin: bottom;
+      animation: bar-v linear both;
+      animation-timeline: view();
+      animation-range: entry 10% entry 70%;
+    }
+    .chart-bar-h {
+      transform-origin: left;
+      animation: bar-h linear both;
+      animation-timeline: view();
+      animation-range: entry 10% entry 70%;
     }
     .read-progress {
       transform-origin: left;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ScrollToTop } from "../../components/ScrollToTop";
 import { CaseTracker } from "../../components/CaseTracker";
 import { SiteFooter } from "../../components/SiteFooter";
 import { SiteNav } from "../../components/SiteNav";
@@ -10,10 +11,13 @@ import { PhoneSequence } from "../../components/PhoneSequence";
 import { CardVideo } from "../../components/CardVideo";
 import { SketchViewer } from "../../components/SketchViewer";
 import { YouTubeEmbed } from "../../components/YouTubeEmbed";
+import { DocViewer } from "../../components/DocViewer";
 import { ZoomImage } from "../../components/ZoomImage";
+import { ChartCard, ChartGrid } from "../../components/Chart";
 import { HeaderVideo } from "../../components/HeaderVideo";
+import { PrinterHero } from "../../components/PrinterHero";
 import { btnPrimary, glass } from "../../components/ui";
-import { getProject, projects, type Feature, type Figure, type Gallery, type Img, type Profile, type Section } from "../../data/projects";
+import { getProject, projects, type Feature, type Figure, type FindingGroup, type FindingLite, type Gallery, type Img, type Profile, type Section } from "../../data/projects";
 
 export function generateStaticParams() {
   return projects.map((p) => ({ slug: p.slug }));
@@ -37,7 +41,7 @@ const slugify = (s: string) =>
     .replace(/^-|-$/g, "");
 
 /** Labeled stand-in for an image, animation, diagram, or chart. */
-function Media({ label, hero = false }: { label: string; hero?: boolean }) {
+function Media({ label, hero = false, short = false }: { label: string; hero?: boolean; short?: boolean }) {
   const i = label.indexOf(":");
   const kind = i > 0 ? label.slice(0, i) : "Media";
   const text = i > 0 ? label.slice(i + 1).trim() : label;
@@ -48,7 +52,7 @@ function Media({ label, hero = false }: { label: string; hero?: boolean }) {
       className={`reveal grid place-items-center rounded-card border-[1.5px] border-dashed border-line p-6 text-center ${
         hero
           ? "aspect-[16/10] bg-[linear-gradient(160deg,var(--color-fade),#e9b9a8_60%,#b79ac2)]"
-          : "aspect-[16/9] bg-white/50"
+          : `${short ? "aspect-[21/8]" : "aspect-[16/9]"} bg-white/50`
       }`}
     >
       <div className="max-w-[44ch]">
@@ -61,7 +65,73 @@ function Media({ label, hero = false }: { label: string; hero?: boolean }) {
   );
 }
 
+/** A smaller placeholder for a finding's side image: portrait for screenshots, square otherwise. */
+function SidePlaceholder({ label }: { label: string }) {
+  const i = label.indexOf(":");
+  const kind = i > 0 ? label.slice(0, i) : "Image";
+  const text = i > 0 ? label.slice(i + 1).trim() : label;
+  return (
+    <div
+      role="img"
+      aria-label={`Placeholder. ${label}`}
+      className={`reveal grid w-full place-items-center rounded-card border-[1.5px] border-dashed border-line bg-white/50 p-4 text-center ${
+        kind === "Screenshot" ? "aspect-[9/16]" : "aspect-square"
+      }`}
+    >
+      <div>
+        <p className="mb-2 inline-block rounded-full border border-line bg-white/70 px-3 py-0.5 text-xs font-bold">{kind} placeholder</p>
+        <p className="text-[15px] leading-snug">{text}</p>
+      </div>
+    </div>
+  );
+}
+
+/** The recommendation card used under every finding, so they all look the same. */
+function RecCard({ recs }: { recs: string[] }) {
+  return (
+    <div className="reveal rounded-card border border-line bg-sand/70 p-5 shadow-card">
+      <p className="mb-2 text-[15px] font-bold uppercase tracking-[0.12em] text-muted">
+        {recs.length > 1 ? "Recommendations" : "Recommendation"}
+      </p>
+      <ul className="list-disc space-y-1.5 pl-5 text-[17px] leading-snug marker:text-coral">
+        {recs.map((r) => <li key={r}>{r}</li>)}
+      </ul>
+    </div>
+  );
+}
+
 function Fig({ figure }: { figure: Figure }) {
+  if (figure.viewer) {
+    return (
+      <figure className="reveal">
+        <DocViewer
+          src={figure.src}
+          alt={figure.alt}
+          width={figure.width}
+          height={figure.height}
+          pages={figure.viewer.pages}
+          pageWidth={figure.viewer.pageWidth}
+          pageHeight={figure.viewer.pageHeight}
+          hotspots={figure.viewer.hotspots}
+        />
+      </figure>
+    );
+  }
+  if (figure.bare) {
+    return (
+      <figure className="reveal" style={figure.maxWidth ? { maxWidth: figure.maxWidth } : undefined}>
+        <Image
+          src={figure.src}
+          alt={figure.alt}
+          width={figure.width}
+          height={figure.height}
+          quality={90}
+          sizes={figure.maxWidth ? `${figure.maxWidth * 2}px` : "(min-width: 800px) 720px, 100vw"}
+          className="h-auto w-full"
+        />
+      </figure>
+    );
+  }
   return (
     <figure className={`${glass} reveal overflow-hidden p-3 sm:p-4`}>
       <Image
@@ -471,7 +541,17 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
         (s.intro || s.bullets) && (
           <div className={`reveal ${m}`}>
             {s.intro && <p className="mb-3 font-bold">{s.intro}</p>}
-            {s.bullets && (
+            {s.bullets && s.bulletCards && (
+              <ul className="grid gap-4 sm:grid-cols-2">
+                {s.bullets.map((b) => (
+                  <li key={b} className={`${glass} flex items-center gap-3 px-5 py-4 text-[18px] leading-snug`}>
+                    <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full bg-teal" />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {s.bullets && !s.bulletCards && (
               <ul className="list-disc space-y-2 pl-5 marker:text-teal">
                 {s.bullets.map((b) => <li key={b}>{b}</li>)}
               </ul>
@@ -491,7 +571,7 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
       {s.cards && s.cardCols === 3 && s.numbered && (
         <ol className="grid gap-4 sm:grid-cols-3">
           {s.cards.map((c, n) => (
-            <li key={c.title} className={`${glass} reveal flex flex-col gap-3 p-5`}>
+            <li key={c.title ?? c.text} className={`${glass} reveal flex flex-col gap-3 p-5`}>
               <span aria-hidden="true" className="font-serif text-[28px] leading-none text-teal-deep">
                 {String(n + 1).padStart(2, "0")}
               </span>
@@ -505,7 +585,7 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
       {s.cards && s.cardCols === 3 && !s.numbered && (
         <div className="grid gap-4 sm:grid-cols-3">
           {s.cards.map((c) => (
-            <div key={c.title} className={`${glass} reveal flex flex-col gap-3 p-5`}>
+            <div key={c.title ?? c.text} className={`${glass} reveal flex flex-col gap-3 p-5`}>
               {c.icon && (
                 <Image
                   src={c.icon.src}
@@ -533,19 +613,61 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
       {s.cards && s.numbered && !s.cardCols && (
         <ol className="space-y-10">
           {s.cards.map((c, n) => (
-            <li key={c.title} className="reveal flex gap-5">
+            <li key={c.title ?? c.text} className="reveal flex gap-5">
               <span aria-hidden="true" className="w-12 shrink-0 font-serif text-[28px] leading-none text-teal-deep">
                 {String(n + 1).padStart(2, "0")}
               </span>
-              <div className={wide ? "" : "max-w-[56ch]"}>
+              <div className={`min-w-0 flex-1 ${c.aside ? "flex flex-col gap-6 md:flex-row md:items-start md:gap-10" : ""}`}>
+              <div className={`${c.aside ? "min-w-0 flex-1" : ""} ${wide ? "" : "max-w-[56ch]"}`}>
                 <h3 className="mb-1 font-serif text-[clamp(20px,2.4vw,24px)] leading-[1.2]">{c.title}</h3>
-                <p>{c.text}</p>
+                {c.text && <p>{c.text}</p>}
+                {c.list && (
+                  <ul className="mt-1 space-y-1.5">
+                    {c.list.map((item) => (
+                      <li key={item} className="flex gap-2.5 text-[18px] leading-snug">
+                        <span aria-hidden="true" className="text-teal-deep">→</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {c.bubbles && (
+                  <div
+                    className="relative mt-5 pb-6"
+                    aria-label="Questions we asked"
+                  >
+                    {c.bubbles.length === 1 ? (
+                      <div className="relative mx-auto w-full max-w-[560px]">
+                                          <Bubble tone={1} className="z-10 text-center">
+                          {c.bubbles[0]}
+                        </Bubble>
+                      </div>
+                    ) : (
+                      c.bubbles.map((q, i) => (
+                        <Bubble
+                          key={q}
+                          tone={i}
+                          style={{ marginLeft: `${i * 11}%`, zIndex: i + 1 }}
+                          className={`w-[78%] ${i > 0 ? "mt-9" : ""}`}
+                        >
+                          {q}
+                        </Bubble>
+                      ))
+                    )}
+                  </div>
+                )}
                 {c.solution && (
                   <p className="mt-2">
                     <span className="font-bold text-teal-deep">Solution: </span>
                     {c.solution}
                   </p>
                 )}
+              </div>
+              {c.aside && (
+                <div className="w-full shrink-0 md:w-[250px]">
+                  <Fig figure={c.aside} />
+                </div>
+              )}
               </div>
             </li>
           ))}
@@ -555,9 +677,9 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
       {s.cards && !s.numbered && !s.cardCols && (
         <div className="grid gap-4 sm:grid-cols-2">
           {s.cards.map((c) => (
-            <div key={c.title} className={`${glass} reveal p-5`}>
-              <h3 className="mb-2 text-[19px] font-bold leading-snug">{c.title}</h3>
-              <p className="text-[17px]">{c.text}</p>
+            <div key={c.title ?? c.text} className={`${glass} reveal p-5`}>
+              {c.title && <h3 className="mb-2 text-[19px] font-bold leading-snug">{c.title}</h3>}
+              <p className={c.title ? "text-[17px]" : "text-[20px] leading-snug"}>{c.text}</p>
               {c.solution && (
                 <p className="mt-2 text-[17px]">
                   <span className="font-bold text-teal-deep">Solution: </span>
@@ -579,31 +701,88 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
 
       {s.gallery && !s.splitGallery && <GalleryView gallery={s.gallery} />}
 
+      {s.scale && (
+        <ul aria-label="Severity levels" className={s.scale.every((sc) => sc.text) ? "mx-auto grid w-full max-w-[560px] gap-3 sm:grid-cols-3" : "reveal flex flex-wrap gap-3"}>
+          {s.scale.map((sc) =>
+            sc.text ? (
+              <li
+                key={sc.level}
+                style={{ borderColor: SEVERITY_TONE[sc.level] }}
+                className="reveal flex flex-col items-center gap-3 rounded-[16px] border-2 px-3.5 py-4 text-center"
+              >
+                <span style={{ background: SEVERITY_TONE[sc.level] }} className="rounded-full px-7 py-1 text-[16px] leading-tight">
+                  {sc.level}
+                </span>
+                <span className="text-[14px] leading-snug">{sc.text}</span>
+              </li>
+            ) : (
+              <li key={sc.level}>
+                <SeverityBadge level={sc.level} />
+              </li>
+            ),
+          )}
+        </ul>
+      )}
+
+      {s.outline && <FindingsOutline groups={s.outline} />}
+
+      {s.charts && <ChartGrid charts={s.charts} />}
+
       {s.figure && <Fig figure={s.figure} />}
 
       {s.findings?.map((f) => (
         <article key={f.title} className="space-y-5">
           <div className="reveal">
-            <p
-              className={`mb-3 inline-block rounded-full border px-3 py-0.5 text-xs font-bold ${
-                f.severity === "Low" ? "border-line bg-white/60" : "border-deep bg-coral"
-              }`}
-            >
-              {f.severity} severity
+            <p className="mb-3">
+              <SeverityBadge level={f.severity} label={`${f.severity} severity`} />
             </p>
             <h3 className="font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.2]">{f.title}</h3>
           </div>
           {f.media && <Media label={f.media} />}
-          <ul className="reveal list-disc space-y-2 pl-5 marker:text-teal">
-            {f.points.map((pt) => <li key={pt}>{pt}</li>)}
-          </ul>
-          {f.quotes?.map((q) => <Quote key={q.text} {...q} />)}
-          {f.figure && <Fig figure={f.figure} />}
-          <div className={`${glass} reveal p-5`}>
-            <p className="mb-2 text-[15px] font-bold">Recommendations</p>
-            <ul className="list-disc space-y-2 pl-5 text-[17px] marker:text-coral">
-              {f.recs.map((r) => <li key={r}>{r}</li>)}
+          {f.bubble && <SpeechBubble {...f.bubble} />}
+          <div className={f.figureFirst ? "grid items-start gap-6 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-10" : "space-y-5"}>
+          {f.figureFirst && f.figure && (
+            <div className="lg:sticky lg:top-28">
+              <Fig figure={f.figure} />
+            </div>
+          )}
+          <div className="min-w-0 space-y-5">
+          {f.points && (
+            <ul className="reveal list-disc space-y-2 pl-5 marker:text-teal">
+              {f.points.map((pt) => <li key={pt}>{pt}</li>)}
             </ul>
+          )}
+          {f.columns && (
+            <div className={`grid gap-x-4 gap-y-6 ${f.figureFirst ? "" : "md:grid-cols-3"}`}>
+              {f.columns.map((col) => (
+                <div key={col.title} className={`reveal gap-3 ${f.figureFirst ? "grid sm:grid-cols-2 sm:items-stretch" : `flex flex-col ${col.recs ? "md:row-span-2 md:grid md:grid-rows-subgrid" : ""}`}`}>
+                  <div className={`${glass} flex-1 p-5`}>
+                    <h4 className="mb-3 text-[19px] font-bold leading-snug">{col.title}</h4>
+                    <ul className="list-disc space-y-1.5 pl-5 text-[17px] leading-snug marker:text-teal">
+                      {col.points.map((pt) =>
+                        typeof pt === "string" ? (
+                          <li key={pt}>{pt}</li>
+                        ) : (
+                          <li key={pt.text}>
+                            {pt.text}
+                            <ul className="mt-1.5 list-[circle] space-y-1 pl-5 marker:text-teal">
+                              {pt.sub.map((sp) => <li key={sp}>{sp}</li>)}
+                            </ul>
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  </div>
+                  {col.recs && <RecCard recs={col.recs} />}
+                </div>
+              ))}
+            </div>
+          )}
+          {f.quotes?.map((q) => <Quote key={q.text} {...q} />)}
+          {!f.figureFirst && f.figure && <Fig figure={f.figure} />}
+          {f.chart && <ChartCard chart={f.chart} />}
+          {f.recs && <RecCard recs={f.recs} />}
+          </div>
           </div>
         </article>
       ))}
@@ -664,7 +843,15 @@ function SubSection({ s, wide }: { s: Section; wide?: boolean }) {
 function SectionBlock({ s, wide }: { s: Section; wide?: boolean }) {
   const id = slugify(s.heading);
   return (
-    <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-28 border-t border-line py-16">
+    <section id={id} aria-labelledby={`${id}-h`} className="relative scroll-mt-28 border-t border-line py-16">
+      {s.stickyLabel && (
+        // Long findings sections keep their name in the left margin, reading upward, for the whole section.
+        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-10 hidden lg:block">
+          <p className="sticky top-36 pt-16 text-[15px] font-bold tracking-wide text-teal-deep [writing-mode:vertical-rl] rotate-180">
+            {s.heading}
+          </p>
+        </div>
+      )}
       {s.statement ? (
         <>
           <p className="reveal mb-4 text-[15px] font-bold text-teal-deep">{s.heading}</p>
@@ -685,6 +872,129 @@ function SectionBlock({ s, wide }: { s: Section; wide?: boolean }) {
   );
 }
 
+// Speech bubbles use the periwinkles from the header illustration: flat colors, rounded shapes, soft shadows.
+const BUBBLE_TONES = [
+  { from: "#d4d8fa", to: "#bfc6f4" }, // light periwinkle (the header's pale buildings)
+  { from: "#bdc4f3", to: "#abb7eb" }, // periwinkle (the header's clouds)
+  { from: "#bcb9f1", to: "#aca3e6" }, // lilac (the rider's jacket)
+];
+
+function Bubble({
+  tone,
+  className = "",
+  style,
+  children,
+}: {
+  tone: number;
+  className?: string;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  const t = BUBBLE_TONES[tone % BUBBLE_TONES.length];
+  return (
+    <div
+      style={{ background: `linear-gradient(180deg, ${t.from}, ${t.to})`, ...style }}
+      className={`relative rounded-[28px] px-7 py-5 text-[18px] leading-snug text-[#1d2f55] shadow-[0_10px_22px_-8px_rgba(35,60,101,0.45),0_2px_4px_rgba(35,60,101,0.12)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1.5 hover:shadow-[0_18px_30px_-10px_rgba(35,60,101,0.5),0_3px_6px_rgba(35,60,101,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${className}`}
+    >
+      {children}
+      {/* Comic-style tail, the same color as the bubble's lower edge so it reads as one shape. */}
+      <svg aria-hidden="true" viewBox="0 0 26 17" className="absolute left-8 top-full -mt-px h-[17px] w-[26px] overflow-visible">
+        <path d="M0 0H25C17 3 10 9 2 16C3.5 10 1 4 0 0Z" fill={t.to} />
+      </svg>
+    </div>
+  );
+}
+
+const SEVERITY_TONE = { Low: "#c8eab0", Medium: "#fdf28f", High: "#f08a84" } as const;
+
+/** A severity rating: a colored pill inside a ring of the same color. Used wherever a rating appears. */
+function SeverityBadge({ level, label }: { level: keyof typeof SEVERITY_TONE; label?: string }) {
+  const tone = SEVERITY_TONE[level];
+  return (
+    <span style={{ borderColor: tone }} className="inline-flex rounded-[14px] border-2 p-[3px] align-middle">
+      <span style={{ background: tone }} className="rounded-full px-4 py-0.5 text-[16px] leading-tight">
+        {label ?? level}
+      </span>
+    </span>
+  );
+}
+
+function FindingRow({ f, flip }: { f: FindingLite; flip?: boolean }) {
+  return (
+    <li>
+      <details open className="group rounded-card border border-transparent transition-colors open:border-line open:bg-white/70">
+        <summary className="flex cursor-pointer list-none items-start gap-3 rounded-card px-3 py-2.5 hover:bg-sand/50 focus-visible:outline-2 [&::-webkit-details-marker]:hidden">
+          <span aria-hidden="true" className="pt-px text-[18px] text-teal-deep">→</span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-[18px] font-bold leading-snug">{f.title}</span>
+              {f.severity !== "Low" && <SeverityBadge level={f.severity} label={`${f.severity} severity`} />}
+            </span>
+            <span className="mt-0.5 block text-[16px] leading-snug text-muted">{f.takeaway}</span>
+          </span>
+          <span aria-hidden="true" className="pt-px text-[22px] leading-none text-teal-deep transition-transform duration-200 group-open:rotate-90 motion-reduce:transition-none">›</span>
+        </summary>
+        <div
+          className={`grid gap-6 border-t border-line px-4 py-6 ${
+            f.figure || f.media ? `md:gap-10 ${flip ? "md:grid-cols-[minmax(0,1fr)_200px]" : "md:grid-cols-[200px_minmax(0,1fr)]"}` : ""
+          }`}
+        >
+          {(f.figure || f.media) && (
+            <div className={`md:sticky md:top-28 md:self-start ${flip ? "md:order-2" : ""}`}>
+              {f.figure ? <Fig figure={f.figure} /> : <SidePlaceholder label={f.media!} />}
+            </div>
+          )}
+          <div className="min-w-0 space-y-7">
+            <ul className="list-disc space-y-2.5 pl-5 marker:text-teal">
+              {f.points.map((pt) => <li key={pt}>{pt}</li>)}
+            </ul>
+            {f.quote && <Quote {...f.quote} />}
+            <RecCard recs={f.recs} />
+          </div>
+        </div>
+      </details>
+    </li>
+  );
+}
+
+function FindingsOutline({ groups }: { groups: FindingGroup[] }) {
+  let n = 0; // running finding count, so the side images alternate down the page
+  return (
+    <ol className="space-y-24">
+      {groups.map((g, gi) => (
+        <li key={g.title} className="flex items-start gap-5">
+          {/* Each number sticks while its group scrolls past, and the next number pushes it out of the way. */}
+          <span aria-hidden="true" className="sticky top-24 w-12 shrink-0 self-start font-serif text-[28px] leading-none text-teal-deep">
+            {String(gi + 1).padStart(2, "0")}
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="mb-6 font-serif text-[clamp(20px,2.4vw,24px)] leading-[1.2]">{g.title}</h3>
+            {g.media && (
+              <div className="mb-10">
+                <Media label={g.media} short />
+              </div>
+            )}
+            <ul className="-mx-3 space-y-10">
+              {g.findings.map((f) => <FindingRow key={f.title} f={f} flip={n++ % 2 === 1} />)}
+            </ul>
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function SpeechBubble({ text, by }: { text: string; by: string }) {
+  return (
+    <div className="reveal relative pb-5">
+      <Bubble tone={0} className="z-10 w-full max-w-[640px]">
+        <p>“{text}”</p>
+        <p className="mt-2 text-[15px] font-bold">{`– ${by}`}</p>
+      </Bubble>
+    </div>
+  );
+}
+
 function Quote({ text, by }: { text: string; by: string }) {
   return (
     <blockquote className="reveal border-l-4 border-teal pl-5">
@@ -700,8 +1010,9 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
   if (!project) notFound();
 
   // The page header: a dedicated photo if the project has one, otherwise the same image as its homepage card.
-  const hero = project.headerImage ?? project.heroImage;
-  const photoHeader = Boolean(project.headerImage);
+  const scene = project.headerScene;
+  const hero = scene ? { src: "", alt: scene.alt, stripeRgb: scene.stripeRgb } : (project.headerImage ?? project.heroImage);
+  const photoHeader = Boolean(project.headerImage || scene);
   const index = projects.findIndex((p) => p.slug === slug);
   const next = projects[(index + 1) % projects.length];
   const tracker = [
@@ -715,31 +1026,34 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
         aria-hidden="true"
         className="read-progress fixed inset-x-0 top-0 z-[60] h-1 origin-left bg-teal"
       />
-      <SiteNav />
+      <ScrollToTop />
+      <SiteNav currentSlug={slug} />
       <CaseTracker items={tracker} />
 
       <main id="top" className={`overflow-x-clip bg-[linear-gradient(to_bottom,var(--color-fade),var(--color-page)_520px)] ${hero ? "" : "pt-28"}`}>
-        {/* Hero image: pinned to the top of the page; the content below scrolls up and over it. Full bleed to the right, fading out on the left so the side tracker stays readable. */}
+        {/* Header: full bleed and pinned to the top of the page; the content below scrolls up and over it. */}
         {hero && (
           <div className="sticky top-0 z-0 h-[clamp(240px,44svh,440px)] md:h-[clamp(300px,min(55svh,calc(58.5vw)),820px)]">
-            <div className={`absolute inset-y-0 right-0 w-full md:w-[90%] ${photoHeader ? "xl:w-[calc(100%-14rem)]" : ""}`}>
-              {project.headerVideo && photoHeader ? (
-                <HeaderVideo mp4={project.headerVideo.mp4} webm={project.headerVideo.webm} poster={hero.src} alt={hero.alt} className={`object-[50%_50%] md:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_6%)] md:[mask-image:linear-gradient(to_right,transparent_0%,black_6%)]`} />
+            <div className="absolute inset-0">
+              {scene ? (
+                <PrinterHero label={scene.alt} />
               ) : (
               <Image
                 src={hero.src}
                 alt={hero.alt}
                 fill
                 quality={90}
-                sizes="(min-width: 768px) 90vw, 100vw"
+                sizes="100vw"
                 preload
-                className={`object-cover ${photoHeader ? "object-[40%_50%] md:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_6%)] md:[mask-image:linear-gradient(to_right,transparent_0%,black_6%)]" : "object-[35%_50%] md:[-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_22%)] md:[mask-image:linear-gradient(to_right,transparent_0%,black_22%)]"}`}
+                className={`object-cover ${photoHeader ? "object-[40%_50%]" : "object-[35%_50%]"}`}
+                style={(project.headerVideo?.focus ?? project.headerImage?.focus) ? { objectPosition: project.headerVideo?.focus ?? project.headerImage?.focus } : undefined}
               />
               )}
+              {project.headerVideo && <HeaderVideo {...project.headerVideo} />}
             </div>
           </div>
         )}
-        <div className={hero ? "relative z-10 bg-page pt-4" : ""}>
+        <div id="case-content" className={hero ? "relative z-10 bg-page pt-4" : ""}>
         {hero && (
           <div
             aria-hidden="true"
@@ -760,8 +1074,8 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
                   width={project.logo.width}
                   height={project.logo.height}
                   quality={90}
-                  sizes="200px"
-                  className="h-20 w-auto sm:h-24"
+                  sizes="364px"
+                  className="h-auto w-[152px] sm:w-[182px]"
                 />
               ) : (
                 <>
@@ -793,7 +1107,7 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
           {/* TL;DR */}
           <section id="tldr" aria-labelledby="tldr-h" className="scroll-mt-28 pb-14">
             <h2 id="tldr-h" className="reveal mb-8 font-serif text-[clamp(28px,4vw,40px)] leading-[1.1] tracking-[-0.02em]">TL;DR</h2>
-            <div className="mb-8 grid items-center gap-8 md:grid-cols-[minmax(0,380px)_1fr] md:gap-10">
+            <div className={`mb-8 grid items-center gap-8 md:gap-10 ${project.cardVideo ? "md:grid-cols-[minmax(0,380px)_1fr]" : ""}`}>
                 <dl className="reveal space-y-4">
                   {project.tldr.map((t) => (
                     <div key={t.label} className="grid gap-1">

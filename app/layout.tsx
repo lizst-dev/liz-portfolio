@@ -1,33 +1,30 @@
 import type { Metadata } from "next";
-import { Unbounded } from "next/font/google";
-import localFont from "next/font/local";
+import { Newsreader, Source_Sans_3, Unbounded } from "next/font/google";
 import { CursorLabel } from "./components/CursorLabel";
 import "./globals.css";
 
-// Array Regular (headings). Lighter weights keep its dot texture subtle.
-const array = localFont({
-  variable: "--font-array",
+// Newsreader: all headings (editorial serif).
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  weight: ["500", "600"],
   display: "swap",
-  src: [{ path: "./fonts/Array-Regular.otf", weight: "400", style: "normal" }],
 });
 
+// Unbounded: the name only (hero and nav pill).
 const unbounded = Unbounded({
   variable: "--font-unbounded",
   subsets: ["latin"],
   weight: "600",
+  display: "swap",
 });
 
-// Khand (body): condensed sans, Light to Bold.
-const khand = localFont({
-  variable: "--font-khand",
+// Source Sans 3: body and UI text.
+const sourceSans = Source_Sans_3({
+  variable: "--font-source-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
-  src: [
-    { path: "./fonts/Khand-Light.otf", weight: "300", style: "normal" },
-    { path: "./fonts/Khand-Regular.otf", weight: "400", style: "normal" },
-    { path: "./fonts/Khand-Medium.otf", weight: "500", style: "normal" },
-    { path: "./fonts/Khand-SemiBold.otf", weight: "600", style: "normal" },
-    { path: "./fonts/Khand-Bold.otf", weight: "700", style: "normal" },
-  ],
 });
 
 export const metadata: Metadata = {
@@ -38,7 +35,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${array.variable} ${unbounded.variable} ${khand.variable}`}>
+    <html lang="en" className={`${newsreader.variable} ${unbounded.variable} ${sourceSans.variable}`}>
       <body>
         {children}
         <CursorLabel />
