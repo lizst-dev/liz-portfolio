@@ -55,10 +55,10 @@ export function ChartCarousel({ children, label }: { children: ReactNode; label:
         <p aria-live="polite" className="mr-1 text-[15px] text-muted">
           {view.first === view.last ? `${view.first}` : `${view.first}–${view.last}`} of {items.length}
         </p>
-        <button type="button" aria-label="Previous charts" className={arrow} disabled={view.atStart} onClick={() => page(-1)}>
+        <button type="button" data-ctl aria-label="Previous charts" className={arrow} disabled={view.atStart} onClick={() => page(-1)}>
           <span aria-hidden="true">←</span>
         </button>
-        <button type="button" aria-label="Next charts" className={arrow} disabled={view.atEnd} onClick={() => page(1)}>
+        <button type="button" data-ctl aria-label="Next charts" className={arrow} disabled={view.atEnd} onClick={() => page(1)}>
           <span aria-hidden="true">→</span>
         </button>
       </div>
@@ -69,7 +69,7 @@ export function ChartCarousel({ children, label }: { children: ReactNode; label:
         className="-m-3 flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth p-3 [scrollbar-width:none] motion-reduce:scroll-auto [&::-webkit-scrollbar]:hidden"
       >
         {items.map((child, i) => (
-          <li key={i} className="flex min-w-0 shrink-0 basis-[85%] snap-start sm:basis-[calc((100%-20px)*0.42)]">
+          <li key={i} className="flex min-w-0 shrink-0 basis-[85%] snap-start sm:basis-[calc((100%-40px)*0.3)]">
             <div className="w-full [&>*]:h-full">{child}</div>
           </li>
         ))}

@@ -12,6 +12,9 @@ import { CardVideo } from "../../components/CardVideo";
 import { SketchViewer } from "../../components/SketchViewer";
 import { YouTubeEmbed } from "../../components/YouTubeEmbed";
 import { DocViewer } from "../../components/DocViewer";
+import { PanViewer } from "../../components/PanViewer";
+import { QuestionScroller } from "../../components/QuestionScroller";
+import { ClipVideo } from "../../components/ClipVideo";
 import { ZoomImage } from "../../components/ZoomImage";
 import { ChartCard, ChartGrid } from "../../components/Chart";
 import { HeaderVideo } from "../../components/HeaderVideo";
@@ -39,6 +42,14 @@ const slugify = (s: string) =>
     .replace(/['’]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+
+/** Round icons for the participant criteria, in order. */
+const CRITERIA_ICONS = [
+  { bg: "var(--crit-1, #3b8e85)", path: <><path d="M5 16V11l1.7-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.8 1.3L19 11v5" /><path d="M3.5 16h17v2.5h-17z" /><circle cx="7.5" cy="13.5" r=".6" /><circle cx="16.5" cy="13.5" r=".6" /></> },
+  { bg: "var(--crit-2, #e87a6e)", path: <><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></> },
+  { bg: "var(--crit-3, #8b93e0)", path: <><circle cx="9" cy="8.5" r="3" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0" /><circle cx="17" cy="9.5" r="2.3" /><path d="M16 14.2a4.6 4.6 0 0 1 4.5 4.3" /></> },
+  { bg: "var(--crit-4, #2c6e67)", path: <><path d="M6 21V4" /><path d="M6 5h11l-2.2 3.5L17 12H6" /></> },
+];
 
 /** Labeled stand-in for an image, animation, diagram, or chart. */
 function Media({ label, hero = false, short = false }: { label: string; hero?: boolean; short?: boolean }) {
@@ -89,18 +100,40 @@ function SidePlaceholder({ label }: { label: string }) {
 /** The recommendation card used under every finding, so they all look the same. */
 function RecCard({ recs }: { recs: string[] }) {
   return (
-    <div className="reveal rounded-card border border-line bg-sand/70 p-5 shadow-card">
-      <p className="mb-2 text-[15px] font-bold uppercase tracking-[0.12em] text-muted">
+    <div className="reveal rounded-card border border-line bg-white p-5">
+      <span className="mb-2 inline-block rounded-full bg-coral px-3.5 py-0.5 text-[14px] font-bold text-white">
         {recs.length > 1 ? "Recommendations" : "Recommendation"}
-      </p>
-      <ul className="list-disc space-y-1.5 pl-5 text-[17px] leading-snug marker:text-coral">
-        {recs.map((r) => <li key={r}>{r}</li>)}
+      </span>
+      <ul>
+        {recs.map((r) => (
+          <li key={r} className="flex items-start gap-3 border-b border-line/60 py-3 text-[17px] leading-snug last:border-b-0 last:pb-0.5">
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="mt-[3px] size-5 shrink-0 text-coral" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+            <span>{r}</span>
+          </li>
+        ))}
       </ul>
     </div>
   );
 }
 
 function Fig({ figure }: { figure: Figure }) {
+  if (figure.pan) {
+    return (
+      <figure className="reveal">
+        <PanViewer
+          preview={figure.src}
+          previewWidth={figure.width}
+          previewHeight={figure.height}
+          full={figure.pan.src}
+          fullWidth={figure.pan.width}
+          fullHeight={figure.pan.height}
+          alt={figure.alt}
+        />
+      </figure>
+    );
+  }
   if (figure.viewer) {
     return (
       <figure className="reveal">
@@ -129,19 +162,50 @@ function Fig({ figure }: { figure: Figure }) {
           sizes={figure.maxWidth ? `${figure.maxWidth * 2}px` : "(min-width: 800px) 720px, 100vw"}
           className="h-auto w-full"
         />
+        {figure.caption && <figcaption className="mt-3 text-[15px] text-muted">{figure.caption}</figcaption>}
       </figure>
     );
   }
-  return (
-    <figure className={`${glass} reveal overflow-hidden p-3 sm:p-4`}>
+  const picture = (
+    <div className="relative overflow-hidden rounded-control bg-white">
       <Image
         src={figure.src}
         alt={figure.alt}
         width={figure.width}
         height={figure.height}
         sizes="(min-width: 800px) 720px, 100vw"
-        className="h-auto w-full rounded-control bg-white"
+        className="h-auto w-full"
       />
+      {figure.marks?.map((m, i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          className="absolute rounded-[3px] bg-[#ffd600]/60 mix-blend-multiply"
+          style={{ left: `${(m.x / figure.width) * 100}%`, top: `${(m.y / figure.height) * 100}%`, width: `${(m.w / figure.width) * 100}%`, height: `${(m.h / figure.height) * 100}%` }}
+        />
+      ))}
+    </div>
+  );
+  // A figure with a source gets its caption outside the card, small and centered, so it doesn't read as part of the image.
+  if (figure.source) {
+    return (
+      <figure className="reveal">
+        <div className={`${glass} overflow-hidden p-3 sm:p-4`}>{picture}</div>
+        <figcaption className="mx-auto mt-3 max-w-[60ch] text-center text-[13px] leading-snug text-muted">
+          {figure.caption}{" "}
+          Source:{" "}
+          <a href={figure.source.href} target="_blank" rel="noopener noreferrer" className="font-bold underline underline-offset-2 hover:no-underline">
+            {figure.source.label}
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+          .
+        </figcaption>
+      </figure>
+    );
+  }
+  return (
+    <figure className={`${glass} reveal overflow-hidden p-3 sm:p-4`}>
+      {picture}
       <figcaption className="px-1 pt-3 text-[15px]">{figure.caption}</figcaption>
     </figure>
   );
@@ -509,7 +573,7 @@ function Stages({ stages }: { stages: NonNullable<Section["stages"]> }) {
 function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
   const m = wide ? "" : "max-w-[62ch]";
   return (
-    <div className="space-y-8">
+    <div className={s.outline ? "space-y-4" : s.bulletCards ? "space-y-5" : "space-y-8"}>
       {s.galleryTop && <GalleryView gallery={s.galleryTop} />}
 
       {!s.statement && s.paras?.map((p) => <p key={p} className={`reveal ${m}`}>{p}</p>)}
@@ -538,15 +602,23 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
           </div>
         </div>
       ) : (
-        (s.intro || s.bullets) && (
+        (s.intro || s.bullets) && !s.scrollCards && (
           <div className={`reveal ${m}`}>
             {s.intro && <p className="mb-3 font-bold">{s.intro}</p>}
             {s.bullets && s.bulletCards && (
-              <ul className="grid gap-4 sm:grid-cols-2">
-                {s.bullets.map((b) => (
-                  <li key={b} className={`${glass} flex items-center gap-3 px-5 py-4 text-[18px] leading-snug`}>
-                    <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full bg-teal" />
-                    {b}
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-4">
+                {s.bullets.map((b, i) => (
+                  <li key={b} className="flex flex-col items-center gap-2 text-center">
+                    <span
+                      aria-hidden="true"
+                      className="flex size-12 items-center justify-center rounded-full text-white shadow-md"
+                      style={{ background: CRITERIA_ICONS[i % CRITERIA_ICONS.length].bg }}
+                    >
+                      <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        {CRITERIA_ICONS[i % CRITERIA_ICONS.length].path}
+                      </svg>
+                    </span>
+                    <span className="max-w-[22ch] text-[15px] leading-snug">{b}</span>
                   </li>
                 ))}
               </ul>
@@ -618,9 +690,14 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
                 {String(n + 1).padStart(2, "0")}
               </span>
               <div className={`min-w-0 flex-1 ${c.aside ? "flex flex-col gap-6 md:flex-row md:items-start md:gap-10" : ""}`}>
-              <div className={`${c.aside ? "min-w-0 flex-1" : ""} ${wide ? "" : "max-w-[56ch]"}`}>
+              <div className={`${c.aside ? "min-w-0 flex-1" : ""} ${wide || c.figure ? "" : "max-w-[56ch]"}`}>
                 <h3 className="mb-1 font-serif text-[clamp(20px,2.4vw,24px)] leading-[1.2]">{c.title}</h3>
                 {c.text && <p>{c.text}</p>}
+                {c.figure && (
+                  <div className="mt-5">
+                    <Fig figure={c.figure} />
+                  </div>
+                )}
                 {c.list && (
                   <ul className="mt-1 space-y-1.5">
                     {c.list.map((item) => (
@@ -674,7 +751,9 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
         </ol>
       )}
 
-      {s.cards && !s.numbered && !s.cardCols && (
+      {s.cards && s.scrollCards && <QuestionScroller label={s.intro} questions={s.cards.map((c) => c.text)} />}
+
+      {s.cards && !s.numbered && !s.cardCols && !s.scrollCards && (
         <div className="grid gap-4 sm:grid-cols-2">
           {s.cards.map((c) => (
             <div key={c.title ?? c.text} className={`${glass} reveal p-5`}>
@@ -702,18 +781,18 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
       {s.gallery && !s.splitGallery && <GalleryView gallery={s.gallery} />}
 
       {s.scale && (
-        <ul aria-label="Severity levels" className={s.scale.every((sc) => sc.text) ? "mx-auto grid w-full max-w-[560px] gap-3 sm:grid-cols-3" : "reveal flex flex-wrap gap-3"}>
+        <ul aria-label="Severity levels" className={s.scale.every((sc) => sc.text) ? "mx-auto grid w-full max-w-[760px] gap-2.5 sm:grid-cols-3" : "reveal flex flex-wrap gap-3"}>
           {s.scale.map((sc) =>
             sc.text ? (
               <li
                 key={sc.level}
                 style={{ borderColor: SEVERITY_TONE[sc.level] }}
-                className="reveal flex flex-col items-center gap-3 rounded-[16px] border-2 px-3.5 py-4 text-center"
+                className="reveal flex flex-col items-center gap-1 rounded-[10px] border-2 px-2.5 py-1.5 text-center"
               >
-                <span style={{ background: SEVERITY_TONE[sc.level] }} className="rounded-full px-7 py-1 text-[16px] leading-tight">
+                <span style={{ background: SEVERITY_TONE[sc.level] }} className="rounded-full px-4 text-[13px] leading-[1.5]">
                   {sc.level}
                 </span>
-                <span className="text-[14px] leading-snug">{sc.text}</span>
+                <span className="text-[12.5px] leading-tight">{sc.text}</span>
               </li>
             ) : (
               <li key={sc.level}>
@@ -724,7 +803,11 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
         </ul>
       )}
 
-      {s.outline && <FindingsOutline groups={s.outline} />}
+      {s.outline && (
+        <div className="pt-12">
+          <FindingsOutline groups={s.outline} />
+        </div>
+      )}
 
       {s.charts && <ChartGrid charts={s.charts} />}
 
@@ -862,7 +945,7 @@ function SectionBlock({ s, wide }: { s: Section; wide?: boolean }) {
       ) : (
         <>
           {s.title && <p className="reveal mb-3 text-[15px] font-bold text-teal-deep">{s.heading}</p>}
-          <h2 id={`${id}-h`} className="reveal mb-8 font-serif text-[clamp(28px,4vw,40px)] leading-[1.1] tracking-[-0.02em]">
+          <h2 id={`${id}-h`} className={`reveal ${s.outline ? "mb-5" : "mb-8"} font-serif text-[clamp(28px,4vw,40px)] leading-[1.1] tracking-[-0.02em]`}>
             {s.title ?? s.heading}
           </h2>
           <Framed s={s} wide={wide} />
@@ -893,19 +976,19 @@ function Bubble({
   const t = BUBBLE_TONES[tone % BUBBLE_TONES.length];
   return (
     <div
-      style={{ background: `linear-gradient(180deg, ${t.from}, ${t.to})`, ...style }}
-      className={`relative rounded-[28px] px-7 py-5 text-[18px] leading-snug text-[#1d2f55] shadow-[0_10px_22px_-8px_rgba(35,60,101,0.45),0_2px_4px_rgba(35,60,101,0.12)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1.5 hover:shadow-[0_18px_30px_-10px_rgba(35,60,101,0.5),0_3px_6px_rgba(35,60,101,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${className}`}
+      style={{ background: `linear-gradient(180deg, var(--bubble-from, ${t.from}), var(--bubble-to, ${t.to}))`, ...style }}
+      className={`bubble relative rounded-[28px] px-7 py-5 text-[18px] leading-snug text-[var(--bubble-text,#1d2f55)] shadow-[0_10px_22px_-8px_rgba(35,60,101,0.45),0_2px_4px_rgba(35,60,101,0.12)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1.5 hover:shadow-[0_18px_30px_-10px_rgba(35,60,101,0.5),0_3px_6px_rgba(35,60,101,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${className}`}
     >
       {children}
       {/* Comic-style tail, the same color as the bubble's lower edge so it reads as one shape. */}
       <svg aria-hidden="true" viewBox="0 0 26 17" className="absolute left-8 top-full -mt-px h-[17px] w-[26px] overflow-visible">
-        <path d="M0 0H25C17 3 10 9 2 16C3.5 10 1 4 0 0Z" fill={t.to} />
+        <path d="M0 0H25C17 3 10 9 2 16C3.5 10 1 4 0 0Z" fill={`var(--bubble-to, ${t.to})`} />
       </svg>
     </div>
   );
 }
 
-const SEVERITY_TONE = { Low: "#c8eab0", Medium: "#fdf28f", High: "#f08a84" } as const;
+const SEVERITY_TONE = { Low: "var(--sev-low, #c8eab0)", Medium: "var(--sev-med, #fdf28f)", High: "var(--sev-high, #f08a84)" } as const;
 
 /** A severity rating: a colored pill inside a ring of the same color. Used wherever a rating appears. */
 function SeverityBadge({ level, label }: { level: keyof typeof SEVERITY_TONE; label?: string }) {
@@ -936,19 +1019,32 @@ function FindingRow({ f, flip }: { f: FindingLite; flip?: boolean }) {
         </summary>
         <div
           className={`grid gap-6 border-t border-line px-4 py-6 ${
-            f.figure || f.media ? `md:gap-10 ${flip ? "md:grid-cols-[minmax(0,1fr)_200px]" : "md:grid-cols-[200px_minmax(0,1fr)]"}` : ""
+            f.figure || f.clip || f.media ? `md:gap-10 ${flip ? "md:grid-cols-[minmax(0,1fr)_200px]" : "md:grid-cols-[200px_minmax(0,1fr)]"}` : ""
           }`}
         >
-          {(f.figure || f.media) && (
+          {(f.figure || f.clip || f.media) && (
             <div className={`md:sticky md:top-28 md:self-start ${flip ? "md:order-2" : ""}`}>
-              {f.figure ? <Fig figure={f.figure} /> : <SidePlaceholder label={f.media!} />}
+              {f.figure ? (
+                <Fig figure={f.figure} />
+              ) : f.clip ? (
+                <div style={{ maxWidth: f.clip.maxWidth }}>
+                  <ClipVideo {...f.clip} />
+                </div>
+              ) : (
+                <SidePlaceholder label={f.media!} />
+              )}
             </div>
           )}
           <div className="min-w-0 space-y-7">
             <ul className="list-disc space-y-2.5 pl-5 marker:text-teal">
-              {f.points.map((pt) => <li key={pt}>{pt}</li>)}
+              {f.points.map((pt) => (
+                <li key={pt}>
+                  {pt.split("**").map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part))}
+                </li>
+              ))}
             </ul>
-            {f.quote && <Quote {...f.quote} />}
+            {f.evidence && <Fig figure={f.evidence} />}
+            {f.quote && (Array.isArray(f.quote) ? f.quote : [f.quote]).map((q) => <Quote key={q.text} {...q} />)}
             <RecCard recs={f.recs} />
           </div>
         </div>
@@ -1021,7 +1117,8 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
   ];
 
   return (
-    <>
+    // The Uber case study alone uses the Base look (see [data-theme="base"] in globals.css). `contents` adds no box.
+    <div data-theme={slug === "uber" ? "base" : undefined} className="contents">
       <div
         aria-hidden="true"
         className="read-progress fixed inset-x-0 top-0 z-[60] h-1 origin-left bg-teal"
@@ -1136,7 +1233,7 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
               )}
             </div>
 
-            <dl className={`${glass} reveal grid gap-x-10 gap-y-8 p-6 sm:grid-cols-2 sm:p-8 ${project.hideStats ? "" : "mb-6"}`}>
+            <dl className={`${glass} meta-card reveal grid gap-x-10 gap-y-8 p-6 sm:grid-cols-2 sm:p-8 ${project.hideStats ? "" : "mb-6"}`}>
               {project.meta.map((m) => (
                 <div key={m.label}>
                   <dt className="mb-2 text-[15px] font-bold uppercase tracking-[0.12em] text-muted">{m.label}</dt>
@@ -1194,6 +1291,6 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
         </div>
       </main>
       <SiteFooter />
-    </>
+    </div>
   );
 }

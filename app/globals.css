@@ -272,3 +272,83 @@ html[data-scene="seattle"] .hero-name {
   display: block;
   position: relative;
 }
+
+/* The Uber case study uses Uber's Base look: black and white, with Base's blue, green, amber and red as the only color.
+   Scoped to [data-theme="base"], which only that page sets, so no other page changes. */
+[data-theme="base"] {
+  --color-teal: #000;
+  --color-teal-deep: #000;
+  --color-coral: #000;
+  --chart-1: #000;
+  --chart-accent: #276ef1;
+  --chart-3: #afafaf;
+  --chart-4: #e2e2e2;
+  --chart-5: #6b6b6b;
+  --crit-1: #000;
+  --crit-2: #000;
+  --crit-3: #000;
+  --crit-4: #000;
+  --sev-low: #bfe3d0;
+  --sev-med: #ffd98a;
+  --sev-high: #f4a69b;
+  --bubble-from: #eee;
+  --bubble-to: #eee;
+  --bubble-text: #000;
+}
+[data-theme="base"] .bubble {
+  box-shadow: none;
+}
+/* Round controls become Base's solid black buttons. */
+[data-theme="base"] [data-ctl] {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+[data-theme="base"] button[data-ctl]:hover:not(:disabled) {
+  background: #333;
+}
+
+/* Base cards are flat: a 1px light-gray outline, solid white, a smaller radius, and no shadow or blur. */
+[data-theme="base"] {
+  --shadow-card: none;
+  --radius-card: 8px;
+}
+[data-theme="base"] .backdrop-blur-xl {
+  background-color: #fff;
+  border-color: #e2e2e2;
+  backdrop-filter: none;
+}
+[data-theme="base"] .rounded-card.border-line {
+  border-color: #e2e2e2;
+}
+[data-theme="base"] .shadow-card {
+  --tw-shadow: 0 0 #0000;
+  box-shadow: none;
+}
+
+/* The Uber page's details card: a flat gray panel with small monospace labels and airy lines. */
+[data-theme="base"] .meta-card {
+  background-color: #f3f3f2;
+  border-color: transparent;
+  border-radius: 24px;
+  row-gap: 1.75rem;
+}
+[data-theme="base"] .meta-card dt {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: #5d5a54;
+  margin-bottom: 0.4rem;
+}
+[data-theme="base"] .meta-card dd {
+  font-size: 19px;
+  line-height: 1.55;
+  color: #3a3935;
+}
+/* The last row (Context) runs the full width of the card so its text stays on one line. */
+@media (min-width: 640px) {
+  [data-theme="base"] .meta-card > div:last-child {
+    grid-column: 1 / -1;
+  }
+}

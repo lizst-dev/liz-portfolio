@@ -63,7 +63,9 @@ export type Section = {
   bullets?: string[];
   /** Show the bullets as a row of cards instead of a list. */
   bulletCards?: boolean;
-  cards?: { title?: string; text: string; /** A short list shown under the card (numbered cards): arrows lead from the group to its findings. */ list?: string[]; solution?: string; /** Short prompts shown as overlapping speech cards under the card text. */ bubbles?: string[]; /** A small illustration shown beside the card (research-finding cards). */ icon?: Img; /** A bare image shown to the right of a numbered card's text. */ aside?: Figure }[];
+  /** Show the `cards` as one large question at a time, driven by page scroll. The section's `intro` is its label. */
+  scrollCards?: boolean;
+  cards?: { title?: string; text: string; /** A short list shown under the card (numbered cards): arrows lead from the group to its findings. */ list?: string[]; solution?: string; /** Short prompts shown as overlapping speech cards under the card text. */ bubbles?: string[]; /** A small illustration shown beside the card (research-finding cards). */ icon?: Img; /** A bare image shown to the right of a numbered card's text. */ aside?: Figure; /** A figure shown full width under the card's text. */ figure?: Figure }[];
   /** 3 lays the cards out side by side with serif titles. */
   cardCols?: 3;
   /** A research plan: a duration, the methods used (with counts), and how they were synthesized. */
@@ -125,8 +127,12 @@ export type FindingLite = {
   severity: "Low" | "Medium" | "High";
   /** What we saw: one to three short points. */
   points: string[];
-  quote?: { text: string; by: string };
+  quote?: { text: string; by: string } | { text: string; by: string }[];
   figure?: Figure;
+  /** Supporting evidence (a policy, a screen) shown full width under the points. */
+  evidence?: Figure;
+  /** A silent looping screen recording, shown in the side column like a figure (takes the place of `media`). */
+  clip?: { /** Participant number shown under the clip, e.g. "P1". */ participant?: string; mp4: string; webm?: string; poster: string; width: number; height: number; alt: string; maxWidth?: number };
   /** Placeholder for an image to come, used when there's no figure: "Kind: what it should show". */
   media?: string;
   recs: string[];
@@ -149,6 +155,12 @@ export type Figure = {
   bare?: boolean;
   /** Cap the displayed width, in px (for phone screenshots and other small images). */
   maxWidth?: number;
+  /** Where the image came from, shown as a link after the caption. */
+  source?: { label: string; href: string };
+  /** Highlighter marks drawn over the image, in pixels of the original image (x, y, width, height). */
+  marks?: { x: number; y: number; w: number; h: number }[];
+  /** Shows `src` as a preview that opens a full-screen viewer you can pan and zoom, using this larger image. */
+  pan?: { src: string; width: number; height: number };
   /** Makes each page in the image clickable, opening it large with Previous/Next. */
   viewer?: {
     pages: { src: string; alt: string }[];
@@ -302,12 +314,12 @@ export const projects: Project[] = [
         title: "A floor that can't run without the system being shut off",
         media: ["Illustration: the retiring system and the 10-month countdown"],
         paras: [
-          "Blue Origin's Enterprise Technology team was disabling the software behind its additive manufacturing floor, which builds 450 to 2,000 engine parts a week. We had 10 months to replace it. Without a replacement, the floor couldn't operate.",
+          "Blue Origin's Enterprise Technology team was disabling the software behind its additive manufacturing floor due to ITAR compliance issues. This software facilitates the production of thousands of engine parts a week. A 10-month timeline was set to replace it.",
         ],
         intro: "Why it mattered",
         bullets: [
           "Every engine part required ITAR compliance and full traceability.",
-          "The old system let operators create custom versions of approved processes, so engineers couldn't tell which variation was followed.",
+          "The old system let machine operators create custom versions of approved processes, so engineers couldn't tell which variation was followed.",
           "That inconsistency caused 5 to 10 anomalies a week, each needing significant engineer time for root cause analysis, and made parts hard to trace.",
         ],
       },
@@ -316,7 +328,7 @@ export const projects: Project[] = [
         title: "A team of three, and I wore three hats",
         media: ["Diagram: team structure across AM customers and operations", "Diagram: timeline from Sept 2024 notice to July 2025 rollout"],
         paras: [
-          "I stepped into design, PM, and product owner roles because the project needed them and I understood both the system and its users.",
+          "I volunteered to lead this project and stepped into a UX research & design role due to my familiarity with the existing software and physical workflow on the manufacturing floor.",
         ],
         bullets: [
           "Me: design, product, and delivery, about 50% of my time.",
@@ -328,10 +340,10 @@ export const projects: Project[] = [
       {
         heading: "Approach",
         title: "Start on the floor, with the people who use it",
-        media: ["Image: shadowing operators on the floor (cleared photo)", "Diagram: process flow from research to side-by-side testing"],
+        media: ["Image: shadowing machine operators on the floor (cleared photo)", "Diagram: process flow from research to side-by-side testing"],
         paras: [
-          "Research: I shadowed operators and interviewed 33 stakeholders (15 engineers, 12 operators, 3 managers, and 3 maintenance staff), then audited the old system.",
-          "Key insight: operators had built workarounds because the old process didn't fit their machines. It required all four laser inputs, even on dual-laser machines, so operators made custom views. I built that need into the system with dynamic checklists that adapt to machine type: a dual-laser machine shows two laser fields, a quad shows four. Operators get relevant inputs, and engineers get consistent data.",
+          "Research: I shadowed machine operators and interviewed 33 stakeholders (15 engineers, 12 operators, 3 managers, and 3 maintenance staff), to solicit feedback on the old system. I then conducted a thorough audit of all elements of the old system to determine what was essential to translate to the new product.",
+          "Key insight: Machine operators had built workarounds because the old process didn't fit their machines. It required all four laser inputs, even on dual-laser machines, so machine operators made custom views. I built that need into the system with dynamic checklists that adapt to machine type: a dual-laser machine shows two laser fields, a quad shows four. Machine operators get relevant inputs, and engineers get consistent data.",
           "Prioritizing and testing: I ranked every known weakness and fixed the high-priority ones for launch. Each section got a one-day side-by-side test in both systems before rollout.",
         ],
       },
@@ -375,7 +387,7 @@ export const projects: Project[] = [
           "Delivered within the 10-month deadline.",
           "From 150+ users to around 1,000, across Engines, Lunar, and Alloy.",
           "Better data: standardized QA checklists, fewer manual entry errors, and improved anomaly traceability.",
-          "Baserow, the platform I advocated for, became Blue's central hub for additive manufacturing data, and our React interface is still in use.",
+          "My project became Blue's central hub for additive manufacturing data, and our React interface is still in use.",
         ],
       },
       {
@@ -895,9 +907,10 @@ export const projects: Project[] = [
     stats: [],
     meta: [
       { label: "Role", value: ["UX Researcher", "PM"] },
-      { label: "Team", value: ["Jenn Park", "Grace Liu", "Yudie Xia", "Liz Overbeek"] },
-      { label: "Context", value: "Usability Studies course in partnership with Uber" },
       { label: "Timeline", value: ["10 weeks", "Winter 2026"] },
+      { label: "Team", value: ["Jenn Park", "Grace Liu", "Yudie Xia", "Liz Overbeek"] },
+      { label: "Uber Partners", value: ["Joan Williams", "Jonathon Markowski"] },
+      { label: "Context", value: "Usability Studies course in partnership with Uber" },
     ],
     tldr: [
       {
@@ -910,7 +923,7 @@ export const projects: Project[] = [
       },
       {
         label: "What we found",
-        text: "Nine findings. Pickup suggestions, the map, and GPS all erode trust, riders fall back on instinct, and not knowing which side of the road to wait on is the one issue that raises a safety concern.",
+        text: "Five findings. Pickup suggestions, the map, and GPS all erode trust, riders fall back on instinct, and not knowing which side of the road to wait on is the one issue that raises a safety concern.",
       },
     ],
     sections: [
@@ -921,6 +934,7 @@ export const projects: Project[] = [
           "We studied the Uber rider mobile app, focusing on the pickup, or rendezvous, phase: interpreting the pickup location, navigating to the meeting point, tracking the driver's arrival, and coordinating with the driver. The target audience was riders who deal with complex pickup environments, such as multi-level pickup areas and places with GPS or coordination challenges.",
         ],
         intro: "Research questions",
+        scrollCards: true,
         cards: [
           { text: "How well do riders understand where to go for pickup?" },
           { text: "How do riders navigate to confusing or complex pickup locations?" },
@@ -978,16 +992,28 @@ export const projects: Project[] = [
               "If you were picking up from this same location again, would you do anything differently next time?",
             ],
           },
+          {
+            title: "Analysis",
+            text: "We transcribed participant observations and grouped notes with affinity diagramming, pairing questionnaire ratings with recorded behavior and interview reflections to find patterns across participants.",
+            figure: {
+              src: "/images/uber/affinity-diagram.png",
+              alt: "Affinity diagram of color-coded sticky notes from the study, grouped into clusters of related observations, with written findings and design implications beside each cluster.",
+              caption: "195 observations grouped into 15 clusters across setup, navigation, and pickup, which became the five findings below.",
+              width: 1978,
+              height: 539,
+              bare: true,
+            },
+          },
         ],
         paras: [
-          "We used four methods, then analyzed the results together. We transcribed participant observations and grouped notes with affinity diagramming, pairing questionnaire ratings with recorded behavior and interview reflections to find patterns across participants.",
+          "We used four methods, then analyzed the results together.",
         ],
       },
       {
         heading: "Participants",
-        title: "Nine riders who knew hard pickups firsthand",
-        paras: ["We recruited 9 participants for this study through a Screening Survey. Participants were frequent Uber users, highly confident with the app, and primarily riding in urban environments— many of whom had recently experienced confusing pickup situations."],
-        intro: "Criteria:",
+        title: "9 riders who knew hard pickups firsthand",
+        paras: ["We recruited 9 participants for this study through a Screening Survey. Participants were frequent Uber users, highly confident with the app, and primarily riding in urban environments."],
+        intro: "Minimum requirements for a participant",
         bulletCards: true,
         bullets: [
           "Used Uber 1-6 times in the past month",
@@ -1014,15 +1040,12 @@ export const projects: Project[] = [
             note: "9 responses, closest major city",
             total: 9,
             items: [
-              { label: "Seattle", value: 3, accent: true },
-              { label: "Seattle, U District", value: 1 },
-              { label: "Bothell", value: 1 },
-              { label: "Bothell, WA", value: 1 },
+              { label: "Greater Seattle Area", value: 6, accent: true },
               { label: "Los Angeles", value: 1 },
               { label: "Manhattan", value: 1 },
-              { label: "Scottsdale, Arizona", value: 1 },
+              { label: "Scottsdale, AZ", value: 1 },
             ],
-            alt: "Bar chart of participant locations from 9 responses: 3 in Seattle, and 1 each in the Seattle U District, Bothell, Bothell WA, Los Angeles, Manhattan, and Scottsdale, Arizona.",
+            alt: "Bar chart of participant locations from 9 responses: 6 in the Greater Seattle Area (Seattle, the U District, and Bothell), and 1 each in Los Angeles, Manhattan, and Scottsdale, Arizona.",
           },
           {
             kind: "columns",
@@ -1077,59 +1100,60 @@ export const projects: Project[] = [
         ],
       },
       {
-        heading: "How we rated findings",
-        title: "Three levels of severity",
+        heading: "Interaction map",
+        title: "Mapping the pickup flow",
         paras: [
-          "Each finding got a severity rating. We found nine issues across setup, navigation, and pickup. Most were rated low, one was rated medium, and none were rated high.",
+          "Before the study, I mapped every screen a rider sees between entering a destination and getting in the car. It showed us where the app gives pickup guidance, and so where to look for breakdowns.",
+        ],
+        figure: {
+          src: "/images/uber/interaction-map-preview.jpg",
+          alt: "Interaction map of the Uber pickup experience: entering a pickup and destination, choosing a ride, confirming the pickup spot, requesting the ride, waiting while the driver approaches, and the driver arriving, with the notification and safety pop-ups.",
+          caption: "",
+          width: 1327,
+          height: 1800,
+          pan: { src: "/images/uber/interaction-map.jpg", width: 3835, height: 5200 },
+        },
+      },
+      {
+        heading: "Findings",
+        title: "5 findings across 3 stages of the pickup",
+        paras: [
+          "The study surfaced more findings than fit here. These five are the ones I chose to highlight because they impacted trust and safety the most.",
+          "Each finding was assigned a severity rating based on its impact on the user experience. Most were low, but one was medium because it raised a safety concern.",
         ],
         scale: [
           { level: "Low", text: "Frustrating, but not task inhibiting" },
           { level: "Medium", text: "Safety related, but not task inhibiting" },
           { level: "High", text: "Task unable to be completed" },
         ],
-      },
-      {
-        heading: "Findings",
-        title: "9 findings across 3 stages of the pickup",
-        paras: ["Select a finding to collapse or expand its details."],
         outline: [
           {
             title: "Setup: Riders lose trust",
-            media: "Illustration: a rider setting up a pickup on their phone",
             findings: [
               {
-                title: "Pickup point suggestions erode trust",
-                takeaway: "Suggested spots feel arbitrary, and riders can't see why they were chosen or override them.",
+                title: "Pickup suggestions erode trust, so riders rely on instinct",
+                takeaway: "Suggested spots feel arbitrary and can't be questioned, so riders fall back on visible, familiar spots and expect friction.",
                 severity: "Low",
                 points: [
                   "Suggested spots feel far away, impractical, or unrelated to what riders expect, and riders didn't see or use the reasoning behind them.",
                   "Frequent pin changes and automatic location adjustments make riders feel the system overrides their intended spot.",
-                ],
-                figure: {
-              src: "/images/uber/pickup-spot-screen-hd.png",
-              alt: "Uber app screen asking the rider to set their pickup spot, with the pin on a map and a suggested spot far from where they wanted to be picked up.",
-              caption: "",
-              width: 705,
-              height: 1452,
-              bare: true,
-              maxWidth: 200,
-            },
-                recs: [
-                  "Explain why a spot was suggested, such as safety or traffic flow.",
-                  "Avoid unexpected pin changes and give riders transparent control over the pickup spot.",
-                ],
-              },
-              {
-                title: "Riders rely on instinct, not the app",
-                takeaway: "Riders pick a visible, familiar spot and stay put, expecting some friction.",
-                severity: "Low",
-                media: "Photo: a rider waiting at a familiar, visible landmark",
-                points: [
-                  "5 of 9 riders adjust their position only when meeting the driver, and choose visible or familiar locations.",
+                  "So riders trust their own judgment: 5 of 9 adjust their position only when meeting the driver, choose visible or familiar locations, and read road conditions to predict where the driver will arrive.",
                   "4 of 9 expect hiccups, especially at airports or buildings with multiple entrances.",
                 ],
                 quote: { text: "Usually I would choose to get picked up at the company entrance because the company has a clear sign and a logo, making it easier for the driver.", by: "P4" },
+                clip: {
+                  participant: "P6",
+                  mp4: "/images/uber/pickup-far-clip.mp4",
+                  webm: "/images/uber/pickup-far-clip.webm",
+                  poster: "/images/uber/pickup-far-clip-poster.jpg",
+                  width: 444,
+                  height: 960,
+                  alt: "Screen recording of a rider choosing a pickup spot on a campus map, sped up, with captions quoting the participant. The suggested spots are far from where they are, so they walk, check other suggestions, still find them far away, and finally pick one.",
+                  maxWidth: 200,
+                },
                 recs: [
+                  "Explain why a spot was suggested, such as safety or traffic flow, and suggest spots where a car can actually stop.",
+                  "Avoid unexpected pin changes and give riders transparent control over the pickup spot.",
                   "Help riders find clearer pickup spots: highlight visible landmarks and surface spots with many successful pickups.",
                   "Give clear feedback on distance and alignment between rider and driver.",
                 ],
@@ -1137,49 +1161,33 @@ export const projects: Project[] = [
             ],
           },
           {
-            title: "Navigation: Map and GPS at odds",
-            media: "Illustration: a rider following the map while the car waits elsewhere",
+            title: "Navigation: The map falls short",
             findings: [
               {
                 title: "The map is perceived as unreliable",
                 takeaway: "Orientation is confusing and details are lacking, which leads to uncertainty and mistrust.",
                 severity: "Low",
                 points: [
-                  "6 of 9 participants expressed frustration, yet average satisfaction on the questionnaire was about 4 out of 5. Frustration isn't the same as dissatisfaction.",
+                  "6 of 9 participants expressed frustration, yet average satisfaction on the questionnaire was about 4 out of 5. **Frustration isn't the same as dissatisfaction.**",
+                  "The app only offers walking directions, and riders didn't follow the suggested path when it wasn't the quickest.",
                 ],
                 quote: {
                   text: "The map itself doesn't rotate, so the orientation can sometimes be confusing. The arrow that shows direction can also be inaccurate, especially in areas with many buildings.",
                   by: "P5",
                 },
-                figure: {
-              src: "/images/uber/map-screen-hd.png",
-              alt: "Uber app map of a dense New York City area, shown without rotation or detail, with the pickup panel still loading below.",
-              caption: "",
-              width: 702,
-              height: 1482,
-              bare: true,
-              maxWidth: 200,
-            },
+                clip: {
+                  participant: "P7",
+                  mp4: "/images/uber/walking-path-clip.mp4",
+                  webm: "/images/uber/walking-path-clip.webm",
+                  poster: "/images/uber/walking-path-clip-poster.jpg",
+                  width: 444,
+                  height: 960,
+                  alt: "Screen recording of a rider waiting for their driver, sped up to 15 seconds. The map shows a suggested walking path to the pickup point, but the rider doesn't follow it. Caption: Participant does not consider or follow suggested walking path.",
+                  maxWidth: 200,
+                },
                 recs: [
                   "Add more detailed visuals, like satellite view, street view, and sidewalks.",
                   "Introduce location selection for multi-level structures.",
-                ],
-              },
-              {
-                title: "GPS isn't accurate, which leads to mistrust",
-                takeaway: "Drivers often don't arrive at the pin the rider chose, and riders skip suggested paths that aren't the quickest.",
-                severity: "Low",
-                media: "Screenshot: a driver marked as arrived away from the pickup pin",
-                points: [
-                  "5 of 9 participants said the GPS wasn't followed: the driver didn't arrive at the pickup point the rider selected, which caused confusion.",
-                  "The app only offers walking directions, and riders didn't follow the suggested path when it wasn't the quickest.",
-                ],
-                quote: {
-                  text: "If the Uber app shows that the driver has arrived, I assume they believe their current location is a better spot to stop or that they may think that location is the pickup point.",
-                  by: "P5",
-                },
-                recs: [
-                  "Recalibrate GPS accuracy and clearly communicate how accurate it is.",
                   "Have a course of action to re-establish trust and safety when paths aren't followed.",
                 ],
               },
@@ -1187,10 +1195,19 @@ export const projects: Project[] = [
                 title: "Side of the road is critical",
                 takeaway: "The app doesn't say which side of the road to wait on, which raises a safety concern.",
                 severity: "Medium",
-                media: "Screenshot: the pickup map with no street-side guidance",
+                clip: {
+                  participant: "P5",
+                  mp4: "/images/uber/pickup-side-clip.mp4",
+                  webm: "/images/uber/pickup-side-clip.webm",
+                  poster: "/images/uber/pickup-side-clip-poster.jpg",
+                  width: 444,
+                  height: 960,
+                  alt: "Screen recordings of two Uber pickups, sped up, with captions quoting the participant. In the first, the participant explains that drivers are often confused about which side of a busy street to pick them up on. In the second, the driver arrives, the participant isn't sure which side he will wait on, texts him that they are on the other side of the street, and the driver eventually comes to them.",
+                  maxWidth: 200,
+                },
                 points: [
                   "Riders are confused about where to stand, which leads to unsafe street-crossing behavior and traffic problems.",
-                  "4 of 9 participants experienced this in the study, and more said in the interview that it comes up often.",
+                  "4 of 9 participants experienced this in the study, and more said in the interview that it comes up often. One of the two lowest trust ratings in the questionnaire traced back to it.",
                 ],
                 quote: { text: "I often don't know which direction the car will approach from, so I'm not sure which side of the road I should stand on.", by: "P6" },
                 recs: [
@@ -1201,69 +1218,60 @@ export const projects: Project[] = [
             ],
           },
           {
-            title: "Pickup: Finding the car is hard",
-            media: "Illustration: a rider and a driver looking for each other on a busy street",
+            title: "Pickup: Waiting under pressure",
             findings: [
               {
-                title: "Locating the driver takes more than the map",
-                takeaway: "Riders match the car by its details and read the road to guess where it will stop.",
+                title: "Drivers don't stop where the pin is",
+                takeaway: "Drivers often don't stop at the pin the rider chose, so pickup reliability feels inconsistent.",
                 severity: "Low",
-                media: "Screenshot: vehicle details on the ride screen",
-                points: [
-                  "Riders identify their ride by the vehicle's color, model, and license plate.",
-                  "They read road conditions and their surroundings to predict where the driver will arrive.",
-                ],
-                recs: [
-                  "Provide adequate vehicle identification information.",
-                  "Suggest pickup points that reflect traffic flow and whether a car can actually stop there.",
-                ],
-              },
-              {
-                title: "Complex environments and driver inconsistency reduce confidence",
-                takeaway: "Drivers often don't stop at the exact pickup spot, so reliability feels inconsistent.",
-                severity: "Low",
-                media: "Illustration: a driver stopping across the street from a rider",
-                points: [
-                  "5 of 9 participants saw drivers stop away from the pickup spot, shaped by traffic and parking availability.",
-                  "7 of 9 riders still rated their trust in Uber during pickup a 4 or 5. The two lower ratings traced back to time pressure from an off-pin pickup and side-of-road ambiguity.",
-                ],
-                quote: {
-                  text: "The driver thought she had already arrived at the pickup point and expected me to run across the street to her, but I was still on the other side of the road.",
-                  by: "P5",
+                clip: {
+                  participant: "P1",
+                  mp4: "/images/uber/gps-clip.mp4",
+                  webm: "/images/uber/gps-clip.webm",
+                  poster: "/images/uber/gps-clip-poster.jpg",
+                  width: 444,
+                  height: 960,
+                  alt: "Screen recording of a rider's Uber app during a pickup, sped up 2.5 times. The map shows the driver stopped at a red light while the app says the driver has arrived, then driving to the pickup point, then parking on the side of the road. Captions quote the participant describing each moment.",
+                  maxWidth: 200,
                 },
-                recs: [
-                  "Clarify the exact pickup location: entrance, level, and side of the street.",
-                  "Give drivers clearer guidance on where to stop.",
-                ],
-              },
-              {
-                title: "Inaccurate arrival signals and countdown timers add stress",
-                takeaway: "The ETA doesn't reflect real conditions, and countdown timers make riders feel rushed.",
-                severity: "Low",
-                media: "Screenshot: the countdown timer and ETA",
                 points: [
-                  "The app marked a driver as arrived at a red light, before the actual pickup spot.",
-                  "Timers made riders feel rushed even when the driver was still some distance away.",
+                  "5 of 9 participants said the GPS wasn't followed: the driver didn't arrive at the pickup point the rider selected, which caused confusion. The app even marked a driver as arrived at a red light, before the real spot.",
+                  "Where drivers stop is shaped by traffic and parking availability, and drivers vary in navigation and communication skills, so pickup reliability feels inconsistent.",
                 ],
-                quote: { text: "App countdown timer makes it more stressful.", by: "P1" },
+
                 recs: [
-                  "Detect true pickup proximity more reliably.",
-                  "Design to reduce the pressure from countdown timers.",
+                  "Recalibrate GPS accuracy, detect true pickup proximity more reliably, and clearly communicate how accurate it is.",
+                  "Clarify the exact pickup location (entrance, level, and side of the street) and give drivers clearer guidance on where to stop.",
                 ],
               },
               {
-                title: "Hidden cancellation fee logic creates anxiety",
-                takeaway: "Fees follow defined rules, but how they're calculated isn't apparent in the interface.",
+                title: "Time pressure and fee uncertainty",
+                takeaway: "Countdown timers and unclear fee rules make riders feel rushed and anxious about cancelling.",
                 severity: "Low",
-                media: "Screenshot: the cancellation fee prompt",
-                points: ["Riders want to know exactly when a fee starts before they decide to cancel."],
+                points: [
+                  "Countdown timers made riders feel rushed even when the driver was still some distance away, and the ETA doesn't reflect real pickup conditions. One of the two lowest trust ratings traced back to time pressure from an off-pin pickup.",
+                  "Cancellation fees follow defined rules, but calculation is not apparent in the UI. Riders want to know exactly when a fee starts before they decide to cancel.",
+                ],
+                evidence: {
+                  src: "/images/uber/cancellation-policy.png",
+                  alt: "Uber's cancellation fee policy. Shared, Economy, and Premium rides each have different cancellation windows. For Economy rides, a fee applies if you cancel more than 2 minutes after your request is accepted. The policy also says fees vary by location and may increase depending on how busy it is.",
+                  caption: "Uber's cancellation fee policy: the rules depend on ride type, location, and demand. Highlights added.",
+                  source: { label: "Uber Help Page", href: "https://help.uber.com/riders/article/review-cancellation-fee?nodeId=6bec690f-ee35-40ba-96ee-c38a8ae796e0" },
+                  width: 1576,
+                  height: 1052,
+                  marks: [
+                    { x: 708, y: 200, w: 150, h: 38 },
+                    { x: 296, y: 728, w: 244, h: 38 },
+                    { x: 1010, y: 728, w: 140, h: 38 },
+                  ],
+                },
                 quote: {
                   text: "The cancellation fee feels a bit unclear. I might want to cancel, but I don't know exactly when the fee starts, so I prefer to have more information about that.",
                   by: "P6",
                 },
                 recs: [
-                  "Show when cancellation fees apply and explain why they vary, such as by location or demand.",
-                  "Provide a clear fee breakdown.",
+                  "Design to reduce the pressure from countdown timers, and make the ETA reflect real pickup conditions.",
+                  "Show when cancellation fees apply, explain why they vary, and provide a clear fee breakdown.",
                 ],
               },
             ],
