@@ -1,12 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SiteFooter } from "./components/SiteFooter";
-import { HeroName } from "./components/HeroName";
 import { CardVideo } from "./components/CardVideo";
 import { HeroScene } from "./components/HeroScene";
 import { SiteNav } from "./components/SiteNav";
 import { btnPrimary, btnSecondary, glass } from "./components/ui";
 import { projects } from "./data/projects";
+
+/** Status pill colors on the project cards (dark text on a light tint, so each passes AA). */
+const STATUS_TONE = {
+  green: "border-[#5aa66e] bg-[#dcefdc] text-[#1d5a32] outline-[#5aa66e]",
+  blue: "border-[#5b8fcf] bg-[#dbe9f8] text-[#1d4e8a] outline-[#5b8fcf]",
+  purple: "border-[#9276b8] bg-[#e9e0f3] text-[#4a3358] outline-[#9276b8]",
+} as const;
 
 function SectionTitle({
   id,
@@ -29,6 +35,11 @@ function SectionTitle({
   );
 }
 
+/** A company logo in the "Previously @" line. The company name is its alt text, since the name is no longer written out. */
+function Logo({ name, src, w, h, fit }: { name: string; src: string; w: number; h: number; fit: string }) {
+  return <Image src={src} alt={name} width={w} height={h} sizes="120px" className={`w-auto max-w-none shrink-0 ${fit}`} />;
+}
+
 export default function Home() {
   return (
     <>
@@ -49,20 +60,24 @@ export default function Home() {
             aria-hidden="true"
             className="absolute inset-x-0 -bottom-px h-[225px] bg-[linear-gradient(to_bottom,rgb(249_237_211_/_0),var(--color-fade)_35%,var(--color-page))]"
           />
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-[55] flex h-svh items-center px-4 pb-[62svh] pt-20 md:pb-[calc(26*var(--hu)+2rem)] sm:px-6">
-            <div className="md:ml-12 lg:ml-24">
-              <HeroName />
-            </div>
-          </div>
           {/* md:pb-24 keeps the card, when it comes to rest at the hero's end, above the character sitting on the first project card */}
           <div className="hero-card-wrap absolute inset-0 flex flex-col justify-end p-4 sm:px-6 md:pb-24">
-            <div className="hero-card sticky bottom-10 z-10 sm:w-fit max-w-[680px] md:max-w-[clamp(480px,calc(46*var(--hu)),680px)] md:ml-12 lg:ml-24 rounded-card border border-white/40 bg-[linear-gradient(160deg,rgb(255_255_255/0.18),rgb(28_41_39/0.28))] p-6 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.5),0_8px_24px_rgb(28_41_39/0.12)] backdrop-blur-[20px] backdrop-saturate-150 [text-shadow:0_1px_8px_rgb(28_41_39/0.35)] sm:p-[clamp(22px,calc(2*var(--hu)),34px)]">
+            <div className="hero-card sticky bottom-10 z-10 sm:w-fit max-w-[680px] md:max-w-[clamp(480px,calc(52*var(--hu)),760px)] md:ml-12 lg:ml-24 rounded-xl border border-deep bg-card/90 p-6 text-deep shadow-[5px_5px_0_var(--color-plum)] sm:p-[clamp(22px,calc(2*var(--hu)),34px)]">
               <h2 className="mb-3 font-serif text-[clamp(30px,calc(3.3*var(--hu)),52px)] leading-[1.08]">
                 Technical UX design for
                 <br className="hidden sm:inline" /> complex systems.
               </h2>
-              <p className="mb-5 hidden text-[clamp(18px,calc(1.6*var(--hu)),22px)] leading-[1.45] sm:block">
-                Past work includes P&amp;G, Zimmer Biomet, and Blue Origin.
+              <p className="mb-5 hidden flex-wrap items-center gap-x-3 gap-y-2 text-[clamp(18px,calc(1.6*var(--hu)),22px)] leading-[1.45] sm:flex">
+                <span>Previously @</span>
+                <span className="flex items-end gap-1">
+                  <Logo name="P&amp;G" src="/images/logos/pg.png" w={256} h={256} fit="h-[1.5em]" />
+                  <span aria-hidden="true">,</span>
+                </span>
+                <span className="flex items-end gap-1">
+                  <Logo name="Zimmer Biomet" src="/images/logos/zimmer-biomet.png" w={707} h={128} fit="h-[1.2em]" />
+                  <span aria-hidden="true">,</span>
+                </span>
+                <Logo name="Blue Origin" src="/images/logos/blue-origin.png" w={896} h={472} fit="h-[1.9em]" />
               </p>
               <div className="flex flex-wrap gap-3 sm:gap-4">
                 <a href="#work" className={btnPrimary}>
@@ -144,6 +159,7 @@ export default function Home() {
                   >
                     <div>
                       <ul className="mb-5 flex flex-wrap gap-2">
+                        <li className={`mr-1.5 rounded-control border px-2.5 py-0.5 text-xs font-bold outline outline-1 outline-offset-2 ${STATUS_TONE[p.status.tone]}`}>{p.status.label}</li>
                         {p.tags.map((t) => (
                           <li
                             key={t}

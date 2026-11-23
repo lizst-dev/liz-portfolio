@@ -1,9 +1,10 @@
 import { btnSecondary, EMAIL, LINKEDIN, RESUME } from "./ui";
 
-export function SiteFooter() {
+/** `clearSidebar` nudges the content right on wide screens, out from under the case-study section list. */
+export function SiteFooter({ clearSidebar = false }: { clearSidebar?: boolean }) {
   return (
     <footer id="contact" className="border-t border-line">
-      <div className="mx-auto max-w-page px-6 pb-8 pt-20">
+      <div className={`mx-auto max-w-page px-6 pb-8 pt-20 ${clearSidebar ? "xl:pl-56" : ""}`}>
         <div className="pb-20">
           <h2 className="mb-10 max-w-[18ch] font-serif text-[clamp(36px,6vw,54px)] leading-[1.1]">
             Let&apos;s work together.

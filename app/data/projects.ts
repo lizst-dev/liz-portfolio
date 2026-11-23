@@ -15,6 +15,8 @@ export type Img = {
   bare?: boolean;
   /** Cap the displayed width, in px (for phone screenshots and other small images). */
   maxWidth?: number;
+  /** Draw this diagram (SVG, see `app/components/diagrams.tsx`) instead of showing `src`. */
+  diagram?: "reminders" | "nudge" | "sitemap";
 };
 
 export type Gallery = {
@@ -48,6 +50,11 @@ export type Feature = {
   image: Img;
 };
 
+/**
+ * Text in a section (paragraphs, bullets, card text, solutions, findings, quotes, TL;DR) can mark words
+ * bold with double asterisks, e.g. "Only **30-50%** stick to their plan". On projects with
+ * `highlightBold` set, those words also get a marker bar under the lower half of the text.
+ */
 export type Section = {
   heading: string;
   /** Optional. When missing, the heading is shown as the section title. */
@@ -59,6 +66,8 @@ export type Section = {
   /** Real images shown right after the paragraphs (before the intro, lists and cards). */
   galleryMid?: Gallery;
   intro?: string;
+  /** Show the intro line before the section's paragraphs instead of after them. */
+  introFirst?: boolean;
   paras?: string[];
   bullets?: string[];
   /** Show the bullets as a row of cards instead of a list. */
@@ -88,7 +97,7 @@ export type Section = {
   /** A small window for flipping through individual images (prev/next, thumbnails, full screen). */
   sketchViewer?: { title: string; images: Img[] };
   /** A header-font line of text with one big floating image underneath. */
-  imageCards?: { text: string; image: Img }[];
+  imageCards?: { text: string; image: Img; /** Paragraphs shown under the image. */ description?: string[] }[];
   /** The heading becomes a small label and the first paragraph becomes the section title. */
   statement?: boolean;
   /** As a subsection: show the heading only as a small label, with no big heading under it. */
@@ -232,10 +241,14 @@ export type Project = {
   logo?: { src: string; width: number; height: number };
   kicker: string;
   headline: string;
+  /** Put a marker bar (#DBDDFF) under the lower half of **bold** words on this project's page. */
+  highlightBold?: boolean;
   /** Let paragraphs run the full width of the content area. */
   wideText?: boolean;
   /** Real image shown right under the title block. */
   lead?: Img;
+  /** Where the project stands, shown as a colored pill before the tags on the home page cards. */
+  status: { label: string; tone: "green" | "blue" | "purple" };
   tags: string[];
   role: string;
   cardSummary: string;
@@ -252,6 +265,24 @@ export type Project = {
 
 const c2f = (file: string, width: number, height: number, alt: string, extra: Partial<Img> = {}): Img => ({
   src: `/images/commit2fit/wix/${file}`,
+  alt,
+  width,
+  height,
+  ...extra,
+});
+
+/** Full-resolution ideation images, exported from the group's Ideation & Sketching deck. */
+const idea = (file: string, width: number, height: number, alt: string, extra: Partial<Img> = {}): Img => ({
+  src: `/images/commit2fit/ideation/${file}`,
+  alt,
+  width,
+  height,
+  ...extra,
+});
+
+/** Full-resolution photos of the paper prototype. */
+const paper = (file: string, width: number, height: number, alt: string, extra: Partial<Img> = {}): Img => ({
+  src: `/images/commit2fit/paper-prototype/${file}`,
   alt,
   width,
   height,
@@ -278,6 +309,7 @@ export const projects: Project[] = [
     logo: { src: "/images/logos/blue-origin.png", width: 896, height: 472 },
     kicker: "UX case study · Space manufacturing",
     headline: "Replacing the system that runs the additive manufacturing floor",
+    status: { label: "Shipped", tone: "green" },
     tags: ["Systems design", "Manufacturing", "Web app"],
     role: "Technical Product Designer & PM · 10 months",
     cardSummary:
@@ -447,9 +479,11 @@ export const projects: Project[] = [
     kicker: "UX case study · Health and wellness",
     headline:
       "Habit-stacking cards and a companion app that help adults stick to at-home physical therapy through community accountability.",
+    status: { label: "Concept", tone: "blue" },
     tags: ["Mobile app", "Health and wellness"],
     role: "UX designer and researcher · 10 weeks",
     wideText: true,
+    highlightBold: true,
     cardSummary:
       "Habit-stacking cards and a companion app that help adults stick to at-home physical therapy through community accountability.",
     stats: [
@@ -478,7 +512,6 @@ export const projects: Project[] = [
       },
       {
         label: "Impact",
-        href: "#impact",
         text: "By improving consistency and motivation outside the clinic, Commit2Fit will enhance adherence to at-home physical therapy plans and ultimately support faster, more effective recovery.",
       },
     ],
@@ -514,37 +547,29 @@ export const projects: Project[] = [
       {
         heading: "Research",
         title: "5 semi-structured interviews + a 29 respondent survey",
+        cardCols: 3,
         paras: [
-          "Our semi-structured interviews were made up of 2 physical therapists and 3 former physical therapy patients.",
+          "We conducted semi-structured interviews with 2 physical therapists and 3 former physical therapy patients.",
+          "Three themes pointed us to a solution. By connecting the findings below, we aimed to lessen the resistance of working exercises into routines and make the path to reaching goals easier.",
         ],
-        subsections: [
+        cards: [
           {
-            heading: "Research Findings",
-            title: "Three themes pointed us to a solution",
-            cardCols: 3,
-            paras: [
-              "By connecting the findings below, we aimed to lessen the resistance of working exercises into routines and make the path to reaching goals easier.",
-            ],
-            cards: [
-              {
-                title: "Lack of Motivation",
-                icon: c2f("finding-motivation.png", 280, 280, "Illustration of two hilltops with winding paths up to flags."),
-                text: "It is clear that lack of motivation is a common thread throughout those in Physical Therapy who have Home Exercise Plans assigned to them.",
-                solution: "Implement habit stacking & community accountability to assist with motivation",
-              },
-              {
-                title: "Working towards Goals",
-                icon: c2f("finding-goals.png", 280, 280, "Illustration of a folded map with a dotted route."),
-                text: "Setting and working towards goals and clear exercise expectations were mentioned many times as being a motivating factor.",
-                solution: "Encourage the setting & tracking of milestones and progress towards personal goals",
-              },
-              {
-                title: "How & Why Matters",
-                icon: c2f("finding-how-why.png", 280, 280, "Illustration of a head in profile with a question mark."),
-                text: "Knowing how to do their assigned exercises and why they are doing each specific movement is motivating because they know how it makes a difference.",
-                solution: "Include directions for how to complete exercises presented via multiple modalities",
-              },
-            ],
+            title: "Lack of Motivation",
+            icon: c2f("finding-motivation.png", 280, 280, "Illustration of two hilltops with winding paths up to flags."),
+            text: "It is clear that lack of motivation is a common thread throughout those in Physical Therapy who have Home Exercise Plans assigned to them.",
+            solution: "Implement habit stacking & community accountability to assist with motivation",
+          },
+          {
+            title: "Working towards Goals",
+            icon: c2f("finding-goals.png", 280, 280, "Illustration of a folded map with a dotted route."),
+            text: "Setting and working towards goals and clear exercise expectations were mentioned many times as being a motivating factor.",
+            solution: "Encourage the setting & tracking of milestones and progress towards personal goals",
+          },
+          {
+            title: "How & Why Matters",
+            icon: c2f("finding-how-why.png", 280, 280, "Illustration of a head in profile with a question mark."),
+            text: "Knowing how to do their assigned exercises and why they are doing each specific movement is motivating because they know how it makes a difference.",
+            solution: "Include directions for how to complete exercises presented via multiple modalities",
           },
         ],
       },
@@ -559,42 +584,50 @@ export const projects: Project[] = [
         sketchViewer: {
           title: "Browse the individual sketches",
           images: [
-            c2f("sketch-01.png", 468, 321, "Brainstorm sketch 1 of 25."),
-            c2f("sketch-02.png", 468, 304, "Brainstorm sketch 2 of 25."),
-            c2f("sketch-03.png", 364, 568, "Brainstorm sketch 3 of 25."),
-            c2f("sketch-04.png", 468, 313, "Brainstorm sketch 4 of 25."),
-            c2f("sketch-05.png", 468, 357, "Brainstorm sketch 5 of 25."),
-            c2f("sketch-06.png", 451, 648, "Brainstorm sketch 6 of 25."),
-            c2f("sketch-07.png", 468, 281, "Brainstorm sketch 7 of 25."),
-            c2f("sketch-08.jpg", 371, 224, "Brainstorm sketch 8 of 25."),
-            c2f("sketch-09.png", 468, 260, "Brainstorm sketch 9 of 25."),
-            c2f("sketch-10.png", 468, 385, "Brainstorm sketch 10 of 25."),
-            c2f("sketch-11.png", 409, 568, "Brainstorm sketch 11 of 25."),
-            c2f("sketch-12.jpg", 319, 234, "Brainstorm sketch 12 of 25."),
-            c2f("sketch-13.png", 392, 525, "Brainstorm sketch 13 of 25."),
-            c2f("sketch-14.jpg", 332, 195, "Brainstorm sketch 14 of 25."),
-            c2f("sketch-15.png", 468, 254, "Brainstorm sketch 15 of 25."),
-            c2f("sketch-16.png", 468, 299, "Brainstorm sketch 16 of 25."),
-            c2f("sketch-17.jpg", 339, 377, "Brainstorm sketch 17 of 25."),
-            c2f("sketch-18.png", 380, 289, "Brainstorm sketch 18 of 25."),
-            c2f("sketch-19.png", 468, 308, "Brainstorm sketch 19 of 25."),
-            c2f("sketch-20.png", 394, 178, "Brainstorm sketch 20 of 25."),
-            c2f("sketch-21.png", 409, 233, "Brainstorm sketch 21 of 25."),
-            c2f("sketch-22.jpg", 383, 277, "Brainstorm sketch 22 of 25."),
-            c2f("sketch-23.png", 386, 479, "Brainstorm sketch 23 of 25."),
-            c2f("sketch-24.jpg", 384, 220, "Brainstorm sketch 24 of 25."),
-            c2f("sketch-25.png", 437, 612, "Brainstorm sketch 25 of 25."),
+            idea("sketch-01.jpg", 2048, 1404, "Sketch: a kit shape placed on a desk, with an open box of pieces nearby and a note to place the kit on or off a spot to signify use."),
+            idea("sketch-02.jpg", 1573, 2028, "Sketch: Community Park and PT collab, with a pull-up frame for strength, a balance bowl, and a rack of resistance bands."),
+            idea("sketch-03.jpg", 1153, 2048, "Sketch: a screen of leg lifts above a digital friend that encourages the patient and tracks their exercises."),
+            idea("sketch-04.jpg", 2048, 1433, "Sketch: a TV with a person exercising and arrows to follow, noted as similar to Wii Fit or Kinect."),
+            idea("sketch-05.jpg", 1783, 1588, "Four-panel storyboard sketch: a reminder to go outside, a prompt asking how you will make it there, and a message on a screen."),
+            idea("sketch-06.jpg", 1427, 2048, "Sketch: a card deck to motivate, with Day 1 create your environment, Day 2 your trigger, Day 3 visualize your goal, and Day 4."),
+            idea("sketch-07.jpg", 2048, 1374, "Sketch: a stack of flashcards; one side shows the exercise and the other shows what it will lead to."),
+            idea("sketch-08.jpg", 2048, 1351, "Sketch: a bracelet with a marquee message from other patients or the PT, and haptic feedback notifications."),
+            idea("sketch-09.jpg", 1354, 755, "Sketch: a toothbrush counter for habit stacking: rotate it each time you do the activity."),
+            idea("sketch-10.jpg", 1577, 2048, "Sketch: a circle of lights that light up when each friend works out, with a button you press when you complete an exercise."),
+            idea("sketch-11.jpg", 1520, 2048, "Sketch: a gingerbread-shaped body outline for tracking pain, with notes about PT programs."),
+            idea("sketch-12.jpg", 1354, 863, "Sketch: Strava 4 PT, an app on a phone that logs what you did."),
+            idea("sketch-13.jpg", 1356, 2048, "Sketch: a watch whose bands grow as you do your reps, leading to a Today's Summary with progress rings."),
+            idea("sketch-14.jpg", 1874, 1539, "Two-frame storyboard sketch: a stick figure at a table, then the same figure lifting a framed picture."),
+            idea("sketch-15.jpg", 1354, 738, "Sketch: the PT Ghoul, a figure that vibrates and makes noise when you pass by, and only turns off once you've completed your PT for the day."),
+            idea("sketch-16.jpg", 2048, 1310, "Sketch: a touch point on a target zone that corresponds to information in an app."),
+            idea("sketch-17.jpg", 1728, 1573, "Sketch: stick figures moving around and a pair interacting in the foreground."),
+            idea("sketch-18.jpg", 2048, 1266, "Sketch: a mentorship program that matches patients with people who have gone through the same PT regimen."),
+            idea("sketch-19.jpg", 2048, 1345, "Sketch: a weekly or monthly kit with equipment, exercises, a brochure, and cards."),
+            idea("sketch-20.jpg", 1382, 525, "Sketch: Your PT Sanctuary, a tent for a person to do PT in."),
+            idea("sketch-21.jpg", 2048, 1020, "Sketch: Your PT Sanctuary #2, a decorative display for your PT equipment to make it more seen."),
+            idea("sketch-22.jpg", 1382, 1180, "Sketch: Stairs for PT, a staircase with added extra steps for PT exercises."),
+            idea("sketch-23.jpg", 1218, 2048, "Sketch: a PT vibe gym without the PTs, with a mirror, PT tools, and a table to gather and chat."),
+            idea("sketch-24.jpg", 1375, 791, "Sketch: TV assistance, a screen asking if you would like to add PT to your day."),
+            idea("sketch-25.jpg", 1389, 2048, "Sketch: app screens for education, with today's exercises, a prompt to break your goal down, and habit stacking tips."),
+            idea("sketch-26.jpg", 1314, 1424, "Sketch: Goal Progress, adding a ring for each step or time you do PT, shown as a stack of rings beside a thermometer that fills toward a goal."),
+            idea("sketch-27.jpg", 1314, 786, "Sketch: Mindful Pain Meditation, a figure putting weight on the pain area to get body connection."),
+            idea("sketch-28.jpg", 741, 2048, "Sketch: Strava, kinda, an app screen listing 3x leg press sets above a progress graph."),
+            idea("sketch-29.jpg", 1208, 2048, "Sketch: a mirror with lights and rep counters around its edge, and a bluetooth wristband."),
+            idea("sketch-30.jpg", 1271, 2048, "Sketch: the connection bracelet, which connects you with people who have your same injury, lets you make a friend, sync your bracelets, and see how your buddy is doing; it buzzes when your buddy completes their PT."),
           ],
         },
         paras: [
           "As a group we held a quick brainstorming session where we challenged ourselves to sketch solutions that could address our research findings and goals.",
-          "From those initial sketches, we were able to identify 10 key themes across the 29 ideas.",
+          "From those initial sketches, we were able to identify 10 key themes across the 30 ideas.",
         ],
         intro: "After reviewing our goals for this solution, we decided to focus on",
         imageCards: [
           {
             text: "A card that could educate and connect to existing technology.",
-            image: c2f("direction-1.png", 468, 350, "Sketch of the card concept: a watch and education cards that connect through NFC, with a workout tracker and motivation cards."),
+            image: idea("direction-1.png", 2048, 1535, "Sketch of the card concept: a watch and education cards that connect through NFC, with a workout tracker and motivation cards."),
+            description: [
+              "This idea consists of a deck of flashcards, with one side pointing to a specific muscle group & exercise and the other side showing examples of the types of activities these exercises will empower you to do (could be digital). These cards could have categories of either exercise type or intensity, with physical therapists using them to build a plan (ex. This week complete #2 and #9). Like cue cards, users can hang them up in their home where they plan to do their physical therapy exercises. There would also be colors associated with each muscle group or type of exercise. The cards would be equipped with NFC technology and would transfer the exercise information, instructions, and data to your smartwatch. This makes it so that the smartwatch (or other wearable) could track your movements & provide haptic and visual feedback on whether the exercises were performed correctly, as well as track reps for each exercise. When your activity was complete, the application would display a summary of your session and progress towards your overall goal.",
+            ],
           },
         ],
         subsections: [
@@ -603,10 +636,9 @@ export const projects: Project[] = [
             collapsible: true,
             /** Shown without its own heading or divider, right under the card concept image. */
             noHeading: true,
-            collapseLabel: "Curious about other paths we almost tried? Find them here!",
+            collapseLabel: "Alternate paths considered",
             paras: [
-              "Although we pivoted away from these initial concepts, we gained many valuable insights from exploring these use cases. All features demonstrated ended up reappearing in our final product.",
-              "This gallery also includes two of the other product directions we explored: an alarm clock and a light.",
+              "Although we pivoted away from these initial concepts, we gained many valuable insights from exploring these use cases. All features demonstrated ended up reappearing in our final product. We didn't choose to pursue these directions because they were not as effective at addressing our research findings and goals.",
             ],
             gallery: {
               cols: 2,
@@ -615,14 +647,30 @@ export const projects: Project[] = [
                 c2f("usecase-2.png", 2400, 1209, "Use case 2 of 4: a sketched scenario with its caption."),
                 c2f("usecase-3.png", 2400, 1283, "Use case 3 of 4: a sketched scenario with its caption."),
                 c2f("usecase-4.png", 2400, 1313, "Use case 4 of 4: a sketched scenario with its caption."),
-                c2f("direction-2.jpg", 468, 350, "Storyboard sketch of the alarm clock concept: a bedside alarm, a phone, an exercise in the home, a backyard stretch, and a smartwatch with a goal.", { caption: "An alarm clock that could alert the patient in their environment." }),
-                c2f("direction-3.png", 468, 620, "Sketch of the Silicon Light Community concept: a dome of friends’ lights, a wearable rep counter, and handwritten notes on how it works.", { caption: "A light that could connect communities of patients." }),
               ],
             },
+            intro: "We also explored two other product directions: an alarm clock and a light.",
+            introFirst: true,
+            imageCards: [
+              {
+                text: "An alarm clock that could alert the patient in their environment.",
+                image: idea("direction-2.jpg", 2048, 1535, "Storyboard sketch of the alarm clock concept: a bedside alarm, a phone, an exercise in the home, a backyard stretch, and a smartwatch with a goal."),
+                description: [
+                  "This idea consists of a smart alarm clock. In the morning, it gives a wake up alarm and gives the direction that, “you have 5 minutes to go outside”. It then gives recommendations of different exercises to do on the way out. This idea seeks to build upon the need for external motivation and help with creating habits. It does this by scheduling a time for the exercise in a consistent location. This design is intended to get the ball rolling. By habit stacking and creating a consistent environment, this design helps to eliminate mental blocks that may come from knowing you have to force yourself to exercise - you just have to get outside. After an exercise is complete an image of a custom goal is displayed reinforcing that the habit they are building is more valuable than the actions alone.",
+                ],
+              },
+              {
+                text: "A light that could connect communities of patients.",
+                image: idea("direction-3.png", 1226, 1622, "Sketch of the Silicon Light Community concept: a dome of friends’ lights, a wearable rep counter, and handwritten notes on how it works."),
+                description: [
+                  "This design consists of a dome shaped device that has bulbs that light up to represent each of your friends. When you finish your physical therapy routine for the day, you push a button and that button then lights up for you and your friends. If one of your community members sees that your button is not lit, they could send you a reminder to complete the activity for the day. This idea covered several of the user needs we found in our research, such as desire for community or group activities, being held accountable by the physical presence of someone, or someone knowing that you haven’t done your exercises, and a need for a reminder to do your exercises in a specific environment. It is more geared towards our “community seeker” archetype.",
+                ],
+              },
+            ],
           },
           {
             heading: "User Archetypes",
-            title: "Two archetypes shaped who we designed for",
+            labelOnly: true,
             profiles: [
               {
                 title: "“Goal Motivated”",
@@ -685,13 +733,13 @@ export const projects: Project[] = [
             gallery: {
               cols: 1,
               items: [
-                c2f("userflow-1-clean.png", 2036, 959, "User flow diagram for setting up habit stacking in the companion app.", { bare: true,
+                c2f("userflow-1-clean.png", 2036, 959, "User flow diagram for setting up habit stacking in the companion app. A patient opens the Exercise tab and sees their weekly exercises. If a reminder is already set up, the app shows its details and asks whether to stack another habit; if not, it shows an Add a Reminder banner and asks whether they want a notification. They then select exercises and a start date, choose a time or, for location-based reminders, enable location sharing and pick a location, add an optional early reminder or repeat, and save.", { bare: true, diagram: "reminders",
                   label: "User Flow 1",
                   heading: "Set up habit stacking on companion app",
                 }),
-                c2f("userflow-2-clean.png", 1599, 802, "User flow diagram for planning exercises based on social connectivity.", { bare: true,
+                c2f("userflow-2-clean.png", 1599, 802, "User flow diagram for planning exercises based on social connectivity. A buddy sends a nudge. If the patient wants to do today's exercise, a new session autoplays, they complete it, see the session summary, and land on the Community page where the Daily Buddy Challenge progress bar grows. If not, they long-press the notification to mark it complete or snooze it for 15, 30 or 60 minutes; a snooze brings a notification at the chosen time, otherwise the exercise is marked complete.", { bare: true, diagram: "nudge",
                   label: "User Flow 2",
-                  heading: "User is guided through planning their exercises based on social connectivity",
+                  heading: "Planning exercises based on social connectivity",
                 }),
               ],
             },
@@ -703,12 +751,12 @@ export const projects: Project[] = [
               {
                 name: "Paper prototype",
                 images: [
-                  c2f("prototype-1a.png", 276, 345, "Paper prototype: a Let’s Get Physical welcome screen with App Store and Google Play buttons."),
-                  c2f("prototype-1b.png", 277, 345, "Paper prototype: a home screen on sticky notes with a notification that the PT uploaded exercises, an accountability group prompt, and a tab bar."),
-                  c2f("prototype-1c.png", 276, 345, "Paper prototype: a Calf Raises tutorial screen with a video placeholder and step-by-step directions."),
-                  c2f("prototype-1d.png", 276, 345, "Paper prototype: a progress screen with a goal, rep counts, a progress chart, and a November calendar."),
-                  c2f("prototype-1e.png", 276, 345, "Paper prototype: six notification strips, such as congratulating a friend on completing their exercises or sending a reminder."),
-                  c2f("prototype-1f.png", 431, 345, "Paper prototype: Feed, Dashboard, and Leaderboard screens drawn on orange paper."),
+                  paper("paper-1.jpg", 1800, 2400, "Paper prototype: a Let’s Get Physical welcome screen with App Store and Google Play buttons."),
+                  paper("paper-2.jpg", 1800, 2400, "Paper prototype: a home screen on sticky notes with a notification that the PT uploaded exercises, an accountability group prompt, and a tab bar."),
+                  paper("paper-3.jpg", 1800, 2400, "Paper prototype: a Calf Raises tutorial screen with a video placeholder and step-by-step directions."),
+                  paper("paper-4.jpg", 1800, 2400, "Paper prototype: a progress screen with a goal, rep counts, a progress chart, and a November calendar."),
+                  paper("paper-5.jpg", 1800, 2400, "Paper prototype: six notification strips, such as congratulating a friend on completing their exercises or sending a reminder."),
+                  paper("paper-6.jpg", 2400, 1800, "Paper prototype: Feed, Dashboard, and Leaderboard screens drawn on orange paper."),
                 ],
               },
               {
@@ -751,7 +799,7 @@ export const projects: Project[] = [
             labelOnly: true,
             gallery: {
               cols: 1,
-              items: [c2f("info-architecture.png", 1861, 1139, "Information architecture diagram of the Commit2Fit companion app.", { bare: true })],
+              items: [c2f("info-architecture.png", 1861, 1139, "Information architecture diagram of the Commit2Fit companion app. After onboarding, the Home screen leads to three main tabs: Exercises (new cards, sessions, weekly lists and reminders), Community (groups, challenges and the feed) and User profile (settings, goals and general reminders). Home also holds an alert, a start-session button and widgets for the buddy nudge, streak and goal progress.", { bare: true, diagram: "sitemap" })],
             },
           },
           {
@@ -810,7 +858,7 @@ export const projects: Project[] = [
           {
             heading: "Adapting Exercises into Existing Routines",
             paras: [
-              "Habit stacking is a method to create new habits by linking them to existing ones. Patients are more likely to complete their exercises if they are reminded in a time of transition between activities or before/during/after an existing habit such as brushing their teeth, coming home from work, or brewing their morning coffee.",
+              "Habit stacking is a method to create new habits by linking them to existing ones. Patients are more likely to complete their exercises if they are **reminded in a time of transition** between activities or before/during/after an **existing habit** such as brushing their teeth, coming home from work, or brewing their morning coffee.",
               "With this feature, patients have fewer barriers in introducing new exercises into their existing routine.",
             ],
             chips: true,
@@ -823,7 +871,7 @@ export const projects: Project[] = [
           {
             heading: "Building Accountability through Online Community",
             paras: [
-              "Personalized, community-driven support groups that connect people navigating similar physical therapy journeys - motivating them through shared accountability, friendly competition, and encouragement to complete their exercises more consistently. Patients can opt in to these features.",
+              "Personalized, **community-driven** support groups that connect people navigating similar physical therapy journeys - motivating them through shared accountability, friendly competition, and encouragement to complete their exercises more consistently. Patients can opt in to these features.",
             ],
             chips: true,
             list: [
@@ -838,7 +886,7 @@ export const projects: Project[] = [
           {
             heading: "Increasing Confidence through Education",
             paras: [
-              "Simple, instructive physical and digital exercise cards designed for PT patients, delivered in small, manageable sets to serve as effective reminders. When paired with the companion app videos, the system builds confidence, clarifies purpose, and reinforces that exercises are achievable and meaningful.",
+              "Simple, **instructive physical and digital exercise cards** designed for PT patients, delivered in small, manageable sets to serve as effective reminders. When paired with the companion app videos, the system builds confidence, clarifies purpose, and reinforces that exercises are achievable and meaningful.",
             ],
             list: [
               "Incremental distribution of cards by PT to prevent overwhelm and guide progression",
@@ -853,7 +901,7 @@ export const projects: Project[] = [
           {
             heading: "Helping Motivate through Prioritizing Personal Goals",
             paras: [
-              "Having a personal goal outside of your Physical Therapy achievements can help with motivation because it is valuable to the individual patient. Recovery progress can be linked to an activity they previously enjoyed that they want to be able to partake in again.",
+              "Having a personal goal outside of your Physical Therapy achievements can **help with motivation** because it is valuable to the individual patient. Recovery progress can be linked to an activity they previously enjoyed that they want to be able to partake in again.",
             ],
             list: [
               "Lifetime Statistics Tracked",
@@ -867,9 +915,25 @@ export const projects: Project[] = [
         ],
       },
       {
-        heading: "Impact",
+        heading: "Reflection",
+        title: "What I learned and what I'd do next",
+        cardCols: 3,
         paras: [
-          "By improving consistency and motivation outside the clinic, Commit2Fit will enhance adherence to at-home physical therapy plans and ultimately support faster, more effective recovery.",
+          "Commit2Fit is a concept, so what I took from it is as much about process as outcome.",
+        ],
+        cards: [
+          {
+            title: "What worked",
+            text: "Tying every feature back to a research finding kept the project focused. Sketching 29 ideas and then pivoting from an alarm clock and a light to cards plus an app gave us a stronger direction than any single early idea.",
+          },
+          {
+            title: "What I'd do differently",
+            text: "We haven't tested Commit2Fit with real patients or physical therapists yet. I'd put the mid-fidelity prototype in front of people mid-recovery to see whether habit stacking and buddy nudges actually change what they do at home.",
+          },
+          {
+            title: "What's next",
+            text: "Measure adherence over several weeks, work with PTs on how cards are handed out, and check that the app works for people who are in pain or less comfortable with technology.",
+          },
         ],
       },
     ],
@@ -899,6 +963,7 @@ export const projects: Project[] = [
     logo: { src: "/images/logos/uber.png", width: 778, height: 275 },
     kicker: "UX research case study · Mobility",
     headline: "Why riders and drivers miss each other at pickup",
+    status: { label: "Research", tone: "purple" },
     tags: ["Usability study", "Mobility"],
     role: "UX researcher and PM · 10 weeks",
     cardSummary:

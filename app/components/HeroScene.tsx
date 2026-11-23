@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 type SceneKey = "seattle" | "michigan";
 
 /** Both scenes are 1257x832 with the same art-pixel size (~3.85px in the source), so they display identically. */
-const SCENES: Record<SceneKey, { src: string; alt: string; className: string; focus: { mobile: number; desktop: number }; shift?: { svh: number; svhDesktop: number; fill: string } }> = {
+const SCENES: Record<SceneKey, { src: string; alt: string; className: string; focus: { mobile: number; desktop: number } }> = {
   michigan: {
     src: "/images/hero.jpg",
     alt: "Pixel-art scene of a red lighthouse on a pier at sunset, waves rolling toward a dune with beach grass.",
@@ -16,11 +16,8 @@ const SCENES: Record<SceneKey, { src: string; alt: string; className: string; fo
   seattle: {
     src: "/images/seattle-hero-v2.jpg",
     alt: "Pixel-art skyline of Seattle at sunset: the Space Needle, downtown towers, and Mount Rainier behind green trees.",
-    // Nudged down so the name (kept at the same height as in the Michigan scene) mostly clears the Space Needle's spire; the gap on top is filled with the
-    // picture's own navy, and the (solid teal) bottom edge is cropped.
-    className: "object-[30%_50%] md:object-[50%_50%] translate-y-[7svh] md:translate-y-[11svh]",
+    className: "object-[30%_50%] md:object-[50%_50%]",
     focus: { mobile: 0.3, desktop: 0.5 },
-    shift: { svh: 0.07, svhDesktop: 0.11, fill: "#0f1745" },
   },
 };
 
@@ -126,8 +123,8 @@ void main() {
 
 type Flip = { from: SceneKey; to: SceneKey };
 
-/** Draw an image into a canvas the way `object-fit: cover; object-position: p% 50%` would, optionally nudged down. */
-function coverCanvas(img: HTMLImageElement, w: number, h: number, p: number, shift?: { px: number; fill: string }) {
+/** Draw an image into a canvas the way `object-fit: cover; object-position: p% 50%` would. */
+function coverCanvas(img: HTMLImageElement, w: number, h: number, p: number) {
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
@@ -136,11 +133,7 @@ function coverCanvas(img: HTMLImageElement, w: number, h: number, p: number, shi
   const k = Math.max(w / img.naturalWidth, h / img.naturalHeight);
   const dw = img.naturalWidth * k;
   const dh = img.naturalHeight * k;
-  if (shift) {
-    ctx.fillStyle = shift.fill;
-    ctx.fillRect(0, 0, w, h);
-  }
-  ctx.drawImage(img, (w - dw) * p, (h - dh) * 0.5 + (shift?.px ?? 0), dw, dh);
+  ctx.drawImage(img, (w - dw) * p, (h - dh) * 0.5, dw, dh);
   return c;
 }
 
@@ -234,12 +227,8 @@ export function HeroScene() {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       return tex;
     };
-    const shiftOf = (key: SceneKey) => {
-      const sh = SCENES[key].shift;
-      return sh ? { px: (mobile ? sh.svh : sh.svhDesktop) * window.innerHeight * dpr, fill: sh.fill } : undefined;
-    };
-    const oldTex = makeTexture(0, coverCanvas(oldImg, W, H, mobile ? SCENES[flip.from].focus.mobile : SCENES[flip.from].focus.desktop, shiftOf(flip.from)));
-    const newTex = makeTexture(1, coverCanvas(newImg, W, H, mobile ? SCENES[flip.to].focus.mobile : SCENES[flip.to].focus.desktop, shiftOf(flip.to)));
+    const oldTex = makeTexture(0, coverCanvas(oldImg, W, H, mobile ? SCENES[flip.from].focus.mobile : SCENES[flip.from].focus.desktop));
+    const newTex = makeTexture(1, coverCanvas(newImg, W, H, mobile ? SCENES[flip.to].focus.mobile : SCENES[flip.to].focus.desktop));
 
     // Flaps are about CELL px; round the grid so tiles fill the hero evenly.
     const cols = Math.max(4, Math.round(cw / CELL));
@@ -287,7 +276,6 @@ export function HeroScene() {
     <div
       ref={wrapRef}
       className="relative aspect-[1257/832] w-full overflow-hidden max-md:aspect-auto max-md:h-svh"
-      style={{ backgroundColor: SCENES.seattle.shift?.fill }}
     >
       {(Object.keys(SCENES) as SceneKey[]).map((key) => (
         <Image

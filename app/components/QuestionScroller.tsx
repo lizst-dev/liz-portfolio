@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** How far (in screen heights) the page scrolls for each question to change. */
-const SCREENS_PER_QUESTION = 0.5;
+const SCREENS_PER_QUESTION = 0.6;
 
 /**
  * A list of questions shown one at a time, in large type. The section pins to the screen and the page scroll
- * drives it: the current question is sharp, the ones before and after peek in half-visible and blurred.
+ * drives it, with no snapping: the current question is sharp, the ones before and after peek in half-visible and blurred.
  * Dots (and the neighbors themselves) jump to a question. Once every question has been seen, a "Show all"
  * link lists them in full. Visitors who prefer reduced motion just get the plain list.
  *
@@ -64,7 +64,7 @@ export function QuestionScroller({ label, questions }: { label?: string; questio
       const to = topFor(i);
       if (Math.abs(to - from) < 2) return;
       const start = performance.now();
-      const ms = 520;
+      const ms = 700;
       animating.current = true;
       const step = (now: number) => {
         const t = Math.min(1, (now - start) / ms);
@@ -78,71 +78,43 @@ export function QuestionScroller({ label, questions }: { label?: string; questio
     [topFor],
   );
 
-  // Follow the page scroll, and make it snap: one wheel gesture moves exactly one question, and anything
-  // else (touch, keys, scrollbar) settles on the nearest question once it stops.
+  // Follow the page scroll continuously. The questions glide toward the scroll position (a little easing,
+  // so trackpad steps and mouse-wheel notches both read as smooth motion) instead of snapping or hijacking the wheel.
   useEffect(() => {
     const el = outer.current;
     if (!el || !pinned) return;
     let frame = 0;
-    let settle = 0;
-    let lastWheel = 0;
-    let lastAbs = 0;
+    let target = 0;
+    let shown = 0;
 
     const read = () => {
       const g = geometry();
-      if (!g) return { pos: 0, engaged: false };
-      const p = Math.min(1, Math.max(0, (g.T - g.r.top) / g.travel));
-      return { pos: p * (n - 1), engaged: g.r.top <= g.T + 1 && g.r.bottom >= g.T + g.hc - 1 };
+      if (!g) return 0;
+      return Math.min(1, Math.max(0, (g.T - g.r.top) / g.travel)) * (n - 1);
     };
-    const update = () => {
+    const tick = () => {
       frame = 0;
-      const { pos } = read();
-      setPos(pos);
-      if (Math.round(pos) === n - 1 && pos > n - 1.15) setSeenAll(true);
+      shown += (target - shown) * 0.16;
+      if (Math.abs(target - shown) < 0.002) shown = target;
+      setPos(shown);
+      if (shown > n - 1.15) setSeenAll(true);
+      if (shown !== target) frame = requestAnimationFrame(tick);
     };
     const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-      window.clearTimeout(settle);
-      settle = window.setTimeout(() => {
-        const { pos, engaged } = read();
-        if (!engaged || animating.current) return;
-        const nearest = Math.round(pos);
-        if (Math.abs(pos - nearest) > 0.02) goTo(nearest);
-      }, 140);
-    };
-    const onWheel = (e: WheelEvent) => {
-      const { pos, engaged } = read();
-      if (!engaged || e.ctrlKey || Math.abs(e.deltaY) < 1) return;
-      const dir = e.deltaY > 0 ? 1 : -1;
-      const here = Math.round(pos);
-      const target = here + dir;
-      // At either end, let the page scroll on normally.
-      if (target < 0 || target > n - 1) return;
-      e.preventDefault();
-      const now = performance.now();
-      const gap = now - lastWheel;
-      const abs = Math.abs(e.deltaY);
-      // Momentum from the last swipe decays steadily; a new swipe shows up as a jump up in size (or a pause).
-      const fresh = gap >= 100 || (abs > lastAbs * 1.3 && abs - lastAbs >= 4);
-      lastWheel = now;
-      lastAbs = abs;
-      // One swipe, one question: skip the rest of a swipe's momentum and anything while a move is running.
-      if (animating.current || !fresh) return;
-      goTo(target);
+      target = read();
+      if (!frame) frame = requestAnimationFrame(tick);
     };
 
-    update();
+    target = shown = read();
+    setPos(shown);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
-    window.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
-      window.removeEventListener("wheel", onWheel);
-      window.clearTimeout(settle);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [n, pinned, goTo, geometry]);
+  }, [n, pinned, geometry]);
 
   const showAllLink = (
     <button
@@ -216,7 +188,7 @@ export function QuestionScroller({ label, questions }: { label?: string; questio
                       opacity: Math.max(0, d <= 1 ? 1 - 0.62 * d : 0.38 * (1 - (d - 1) / 0.6)),
                       filter: `blur(${(Math.min(d, 1) * 2.6).toFixed(2)}px)`,
                     }}
-                    className={`absolute inset-x-0 top-1/2 transition-[transform,opacity,filter] duration-150 ease-out will-change-transform ${current ? "" : "cursor-pointer select-none"}`}
+                    className={`absolute inset-x-0 top-1/2 will-change-[transform,opacity,filter] ${current ? "" : "cursor-pointer select-none"}`}
                   >
                     <span className="mb-2 block text-[15px] font-bold tracking-wide text-muted">RQ{i + 1}</span>
                     <span className="block font-serif text-[clamp(26px,4vw,44px)] leading-[1.12] tracking-[-0.01em]">{q}</span>

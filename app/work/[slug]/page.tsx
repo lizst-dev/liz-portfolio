@@ -16,6 +16,8 @@ import { PanViewer } from "../../components/PanViewer";
 import { QuestionScroller } from "../../components/QuestionScroller";
 import { ClipVideo } from "../../components/ClipVideo";
 import { ZoomImage } from "../../components/ZoomImage";
+import { DiagramFrame } from "../../components/DiagramFrame";
+import { DiagramByName } from "../../components/diagrams";
 import { ChartCard, ChartGrid } from "../../components/Chart";
 import { HeaderVideo } from "../../components/HeaderVideo";
 import { PrinterHero } from "../../components/PrinterHero";
@@ -50,6 +52,15 @@ const CRITERIA_ICONS = [
   { bg: "var(--crit-3, #8b93e0)", path: <><circle cx="9" cy="8.5" r="3" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0" /><circle cx="17" cy="9.5" r="2.3" /><path d="M16 14.2a4.6 4.6 0 0 1 4.5 4.3" /></> },
   { bg: "var(--crit-4, #2c6e67)", path: <><path d="M6 21V4" /><path d="M6 5h11l-2.2 3.5L17 12H6" /></> },
 ];
+
+/** Renders `**double-asterisk**` words as bold; any other text is shown as is. Pages that set `highlightBold` also put a marker bar under them (see `.hilite-bold` in globals.css). */
+function Rich({ children }: { children: string }) {
+  return (
+    <>
+      {children.split("**").map((part, i) => (i % 2 ? <strong key={i} className="font-bold">{part}</strong> : part))}
+    </>
+  );
+}
 
 /** Labeled stand-in for an image, animation, diagram, or chart. */
 function Media({ label, hero = false, short = false }: { label: string; hero?: boolean; short?: boolean }) {
@@ -110,7 +121,7 @@ function RecCard({ recs }: { recs: string[] }) {
             <svg aria-hidden="true" viewBox="0 0 24 24" className="mt-[3px] size-5 shrink-0 text-coral" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
-            <span>{r}</span>
+            <span><Rich>{r}</Rich></span>
           </li>
         ))}
       </ul>
@@ -221,7 +232,20 @@ const RAISE =
 /** Floating images have no frame to put a shadow on, so they only lift. */
 const LIFT = "transition-[translate] duration-200 ease-out motion-safe:hover:-translate-y-1";
 
-function Pic({ img, cols = 1, hover = false }: { img: Img; cols?: number; hover?: boolean }) {
+function Pic({
+  img,
+  cols = 1,
+  hover = false,
+  group,
+  index,
+}: {
+  img: Img;
+  cols?: number;
+  hover?: boolean;
+  /** The other images of this set, so the expanded view can step through them with arrows. */
+  group?: Img[];
+  index?: number;
+}) {
   const sizes = `(min-width: 800px) ${Math.round(752 / cols)}px, ${cols === 1 ? "100vw" : "50vw"}`;
   const bare = img.bare;
   return (
@@ -239,7 +263,12 @@ function Pic({ img, cols = 1, hover = false }: { img: Img; cols?: number; hover?
       {bare && img.title && (
         <p className="mb-2 text-center font-serif text-[clamp(20px,2.2vw,24px)] leading-[1.2]">{img.title}</p>
       )}
-      <ZoomImage src={img.src} alt={img.alt} width={img.width} height={img.height}>
+      {img.diagram ? (
+        <DiagramFrame label={img.alt} wide={img.diagram === "sitemap"} minWidth={img.diagram === "sitemap" ? 0 : 640} zoomWidth={img.diagram === "sitemap" ? 1300 : 1000}>
+          <DiagramByName name={img.diagram} label={img.alt} />
+        </DiagramFrame>
+      ) : (
+      <ZoomImage src={img.src} alt={img.alt} width={img.width} height={img.height} group={group} index={index}>
         <div
           className={`${bare ? "" : `overflow-hidden rounded-control border border-line bg-white ${RAISE}`} ${hover ? HOVER : ""}`}
         >
@@ -255,6 +284,7 @@ function Pic({ img, cols = 1, hover = false }: { img: Img; cols?: number; hover?
           />
         </div>
       </ZoomImage>
+      )}
       {((!bare && img.title) || img.caption) && (
         <figcaption className="px-1 pt-2 text-[15px]">
           {!bare && img.title && <span className="block font-bold">{img.title}</span>}
@@ -361,7 +391,7 @@ function ProfileView({ profile }: { profile: Profile }) {
             <div key={g.label}>
               <p className="mb-1 text-[15px] font-bold text-teal-deep">{g.label}</p>
               <ul className="list-disc space-y-1 pl-4 text-[15px] leading-snug marker:text-teal">
-                {g.items.map((i) => <li key={i}>{i}</li>)}
+                {g.items.map((i) => <li key={i}><Rich>{i}</Rich></li>)}
               </ul>
             </div>
           ))}
@@ -376,7 +406,7 @@ function FeatureView({ feature, flip }: { feature: Feature; flip: boolean }) {
   const list = (
     <div>
       {feature.listLabel && <p className="font-bold">{feature.listLabel}</p>}
-      {feature.listIntro && <p className="mb-2">{feature.listIntro}</p>}
+      {feature.listIntro && <p className="mb-2"><Rich>{feature.listIntro}</Rich></p>}
       {feature.chips ? (
         <ul className="flex flex-wrap gap-2">
           {feature.list.map((i) => (
@@ -385,7 +415,7 @@ function FeatureView({ feature, flip }: { feature: Feature; flip: boolean }) {
         </ul>
       ) : (
         <ul className="list-disc space-y-1 pl-5 marker:text-teal">
-          {feature.list.map((i) => <li key={i}>{i}</li>)}
+          {feature.list.map((i) => <li key={i}><Rich>{i}</Rich></li>)}
         </ul>
       )}
     </div>
@@ -407,7 +437,7 @@ function FeatureView({ feature, flip }: { feature: Feature; flip: boolean }) {
       {/* The image column stretches to the height of the text, and the (trimmed) image scales to fill it. */}
       <div className={`grid gap-6 ${cols}`}>
         <div className={`reveal space-y-4 ${flip ? "sm:order-2" : ""}`}>
-          {feature.paras.map((p) => <p key={p}>{p}</p>)}
+          {feature.paras.map((p) => <p key={p}><Rich>{p}</Rich></p>)}
           {list}
         </div>
         {/* On sm+ the image is positioned inside a box that stretches to the text's height, so it can't make the row taller. */}
@@ -455,19 +485,24 @@ function ImageCards({ cards }: { cards: NonNullable<Section["imageCards"]> }) {
   return (
     <div className="space-y-5">
       {cards.map((c) => (
-        <div key={c.text} className="reveal mx-auto max-w-[600px] space-y-4">
-          <h3 className="font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.2]">{c.text}</h3>
-          <ZoomImage src={c.image.src} alt={c.image.alt} width={c.image.width} height={c.image.height}>
-            <Image
-              src={c.image.src}
-              alt={c.image.alt}
-              width={c.image.width}
-              height={c.image.height}
-              quality={90}
-              sizes="(min-width: 640px) 600px, 100vw"
-              className={`h-auto w-full mix-blend-multiply ${LIFT}`}
-            />
-          </ZoomImage>
+        <div key={c.text} className="reveal space-y-4">
+          <h3 className="font-serif text-[clamp(22px,2.6vw,28px)] leading-[1.2]"><Rich>{c.text}</Rich></h3>
+          <div className="mx-auto max-w-[600px]">
+            <ZoomImage src={c.image.src} alt={c.image.alt} width={c.image.width} height={c.image.height}>
+              <Image
+                src={c.image.src}
+                alt={c.image.alt}
+                width={c.image.width}
+                height={c.image.height}
+                quality={90}
+                sizes="(min-width: 640px) 600px, 100vw"
+                className={`h-auto w-full mix-blend-multiply ${LIFT}`}
+              />
+            </ZoomImage>
+          </div>
+          {c.description?.map((d) => (
+            <p key={d} className="text-[17px] leading-snug"><Rich>{d}</Rich></p>
+          ))}
         </div>
       ))}
     </div>
@@ -486,7 +521,7 @@ function ResearchPlan({ plan }: { plan: NonNullable<Section["plan"]> }) {
             )}
             <span className="min-w-0">
               <span className="block font-serif text-[clamp(18px,2vw,21px)] leading-[1.2]">{mt.label}</span>
-              {mt.detail && <span className="mt-1 block text-[16px] leading-snug">{mt.detail}</span>}
+              {mt.detail && <span className="mt-1 block text-[16px] leading-snug"><Rich>{mt.detail}</Rich></span>}
             </span>
           </li>
         ))}
@@ -520,13 +555,13 @@ function StageHead({ n, total, name }: { n: number; total: number; name: string 
 function PhotoRow({ images }: { images: Img[] }) {
   return (
     <ul className="grid grid-cols-3 gap-3 sm:flex">
-      {images.map((img) => (
+      {images.map((img, n) => (
         <li
           key={img.src}
           style={{ "--ar": img.width / img.height } as React.CSSProperties}
           className="min-w-0 sm:[flex:var(--ar)_1_0%]"
         >
-          <Pic img={img} cols={6} />
+          <Pic img={img} cols={6} group={images} index={n} />
         </li>
       ))}
     </ul>
@@ -572,11 +607,13 @@ function Stages({ stages }: { stages: NonNullable<Section["stages"]> }) {
 
 function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
   const m = wide ? "" : "max-w-[62ch]";
+  const paraNodes =
+    !s.statement && s.paras?.map((p) => <p key={p} className={`reveal ${m}`}><Rich>{p}</Rich></p>);
   return (
     <div className={s.outline ? "space-y-4" : s.bulletCards ? "space-y-5" : "space-y-8"}>
       {s.galleryTop && <GalleryView gallery={s.galleryTop} />}
 
-      {!s.statement && s.paras?.map((p) => <p key={p} className={`reveal ${m}`}>{p}</p>)}
+      {!s.introFirst && paraNodes}
 
       {s.galleryMid && <GalleryView gallery={s.galleryMid} />}
       {s.sketchViewer && (
@@ -593,7 +630,7 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
             )}
             {s.bullets && (
               <ul className="list-disc space-y-2 pl-5 marker:text-teal">
-                {s.bullets.map((b) => <li key={b}>{b}</li>)}
+                {s.bullets.map((b) => <li key={b}><Rich>{b}</Rich></li>)}
               </ul>
             )}
           </div>
@@ -604,7 +641,7 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
       ) : (
         (s.intro || s.bullets) && !s.scrollCards && (
           <div className={`reveal ${m}`}>
-            {s.intro && <p className="mb-3 font-bold">{s.intro}</p>}
+            {s.intro && <p className="mb-3 font-bold"><Rich>{s.intro}</Rich></p>}
             {s.bullets && s.bulletCards && (
               <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-4">
                 {s.bullets.map((b, i) => (
@@ -625,12 +662,14 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
             )}
             {s.bullets && !s.bulletCards && (
               <ul className="list-disc space-y-2 pl-5 marker:text-teal">
-                {s.bullets.map((b) => <li key={b}>{b}</li>)}
+                {s.bullets.map((b) => <li key={b}><Rich>{b}</Rich></li>)}
               </ul>
             )}
           </div>
         )
       )}
+
+      {s.introFirst && paraNodes}
 
       {s.stats && <StatCards stats={s.stats} pills={s.pills} />}
 
@@ -648,7 +687,7 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
                 {String(n + 1).padStart(2, "0")}
               </span>
               <h3 className="font-serif text-[clamp(20px,2.2vw,24px)] leading-[1.15]">{c.title}</h3>
-              <p className="text-[16px] leading-snug">{c.text}</p>
+              <p className="text-[16px] leading-snug"><Rich>{c.text}</Rich></p>
             </li>
           ))}
         </ol>
@@ -670,11 +709,11 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
                 />
               )}
               <h3 className="font-serif text-[clamp(20px,2.2vw,24px)] leading-[1.15]">{c.title}</h3>
-              <p className="text-[16px] leading-snug">{c.text}</p>
+              <p className="text-[16px] leading-snug"><Rich>{c.text}</Rich></p>
               {c.solution && (
                 <p className="mt-auto border-t border-line pt-3 text-[16px] leading-snug">
                   <span className="mb-1 block font-bold text-teal-deep">Solution:</span>
-                  {c.solution}
+                  <Rich>{c.solution}</Rich>
                 </p>
               )}
             </div>
@@ -692,7 +731,7 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
               <div className={`min-w-0 flex-1 ${c.aside ? "flex flex-col gap-6 md:flex-row md:items-start md:gap-10" : ""}`}>
               <div className={`${c.aside ? "min-w-0 flex-1" : ""} ${wide || c.figure ? "" : "max-w-[56ch]"}`}>
                 <h3 className="mb-1 font-serif text-[clamp(20px,2.4vw,24px)] leading-[1.2]">{c.title}</h3>
-                {c.text && <p>{c.text}</p>}
+                {c.text && <p><Rich>{c.text}</Rich></p>}
                 {c.figure && (
                   <div className="mt-5">
                     <Fig figure={c.figure} />
@@ -736,7 +775,7 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
                 {c.solution && (
                   <p className="mt-2">
                     <span className="font-bold text-teal-deep">Solution: </span>
-                    {c.solution}
+                    <Rich>{c.solution}</Rich>
                   </p>
                 )}
               </div>
@@ -758,11 +797,11 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
           {s.cards.map((c) => (
             <div key={c.title ?? c.text} className={`${glass} reveal p-5`}>
               {c.title && <h3 className="mb-2 text-[19px] font-bold leading-snug">{c.title}</h3>}
-              <p className={c.title ? "text-[17px]" : "text-[20px] leading-snug"}>{c.text}</p>
+              <p className={c.title ? "text-[17px]" : "text-[20px] leading-snug"}><Rich>{c.text}</Rich></p>
               {c.solution && (
                 <p className="mt-2 text-[17px]">
                   <span className="font-bold text-teal-deep">Solution: </span>
-                  {c.solution}
+                  <Rich>{c.solution}</Rich>
                 </p>
               )}
             </div>
@@ -832,7 +871,7 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
           <div className="min-w-0 space-y-5">
           {f.points && (
             <ul className="reveal list-disc space-y-2 pl-5 marker:text-teal">
-              {f.points.map((pt) => <li key={pt}>{pt}</li>)}
+              {f.points.map((pt) => <li key={pt}><Rich>{pt}</Rich></li>)}
             </ul>
           )}
           {f.columns && (
@@ -844,7 +883,7 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
                     <ul className="list-disc space-y-1.5 pl-5 text-[17px] leading-snug marker:text-teal">
                       {col.points.map((pt) =>
                         typeof pt === "string" ? (
-                          <li key={pt}>{pt}</li>
+                          <li key={pt}><Rich>{pt}</Rich></li>
                         ) : (
                           <li key={pt.text}>
                             {pt.text}
@@ -913,7 +952,7 @@ function SubSection({ s, wide }: { s: Section; wide?: boolean }) {
       {!s.noHeading && !s.labelOnly && (
         <>
           {s.title && <p className="reveal mb-3 text-[15px] font-bold text-teal-deep">{s.heading}</p>}
-          <h3 className="reveal mb-6 font-serif text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.02em]">
+          <h3 className="reveal mb-6 font-serif text-[clamp(28px,4vw,40px)] leading-[1.1] tracking-[-0.02em]">
             {s.title ?? s.heading}
           </h3>
         </>
@@ -1039,7 +1078,7 @@ function FindingRow({ f, flip }: { f: FindingLite; flip?: boolean }) {
             <ul className="list-disc space-y-2.5 pl-5 marker:text-teal">
               {f.points.map((pt) => (
                 <li key={pt}>
-                  {pt.split("**").map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part))}
+                  <Rich>{pt}</Rich>
                 </li>
               ))}
             </ul>
@@ -1084,7 +1123,7 @@ function SpeechBubble({ text, by }: { text: string; by: string }) {
   return (
     <div className="reveal relative pb-5">
       <Bubble tone={0} className="z-10 w-full max-w-[640px]">
-        <p>“{text}”</p>
+        <p>“<Rich>{text}</Rich>”</p>
         <p className="mt-2 text-[15px] font-bold">{`– ${by}`}</p>
       </Bubble>
     </div>
@@ -1094,7 +1133,7 @@ function SpeechBubble({ text, by }: { text: string; by: string }) {
 function Quote({ text, by }: { text: string; by: string }) {
   return (
     <blockquote className="reveal border-l-4 border-teal pl-5">
-      <p className="font-serif text-[clamp(20px,2.4vw,24px)] leading-[1.3]">“{text}”</p>
+      <p className="font-serif text-[clamp(20px,2.4vw,24px)] leading-[1.3]">“<Rich>{text}</Rich>”</p>
       <footer className="mt-2 text-[15px] font-bold">{by}</footer>
     </blockquote>
   );
@@ -1125,9 +1164,9 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
       />
       <ScrollToTop />
       <SiteNav currentSlug={slug} />
-      <CaseTracker items={tracker} />
+      <CaseTracker items={tracker} slug={slug} />
 
-      <main id="top" className={`overflow-x-clip bg-[linear-gradient(to_bottom,var(--color-fade),var(--color-page)_520px)] ${hero ? "" : "pt-28"}`}>
+      <main id="top" className={`${project.highlightBold ? "hilite-bold" : ""} overflow-x-clip bg-[linear-gradient(to_bottom,var(--color-fade),var(--color-page)_520px)] ${hero ? "" : "pt-28"}`}>
         {/* Header: full bleed and pinned to the top of the page; the content below scrolls up and over it. */}
         {hero && (
           <div className="sticky top-0 z-0 h-[clamp(240px,44svh,440px)] md:h-[clamp(300px,min(55svh,calc(58.5vw)),820px)]">
@@ -1176,12 +1215,13 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
                 />
               ) : (
                 <>
-                  <span aria-hidden="true" className="size-2.5 rounded-full bg-coral" />
-                  {project.name}
+                  <span aria-hidden="true" className="size-3.5 shrink-0 rounded-full bg-coral sm:size-4" />
+                  {/* The name set the way it is in the nav pill (Unbounded), at about the height of the other case studies' logos. */}
+                  <span className="font-display text-[30px] font-normal leading-none text-name sm:text-[40px]">{project.name}</span>
                 </>
               )}
-              {project.logo && <span aria-hidden="true" className="h-10 w-px bg-deep/25 sm:h-12" />}
-              <span className="font-normal text-muted">{project.logo ? "" : "· "}{project.kicker.split("·")[1]?.trim() ?? project.kicker}</span>
+              <span aria-hidden="true" className="h-10 w-px bg-deep/25 sm:h-12" />
+              <span className="font-normal text-muted">{project.kicker.split("·")[1]?.trim() ?? project.kicker}</span>
             </p>
             <h1
               className={`mb-6 font-serif leading-[1.05] tracking-[-0.02em] ${
@@ -1217,7 +1257,7 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
                           t.label
                         )}
                       </dt>
-                      <dd>{t.text}</dd>
+                      <dd><Rich>{t.text}</Rich></dd>
                     </div>
                   ))}
                 </dl>
@@ -1269,7 +1309,7 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
           {/* Showcase video */}
           {project.showcase && (
             <section aria-labelledby="showcase-h" className="reveal scroll-mt-28 pb-14">
-              <h2 id="showcase-h" className="mb-6 font-serif text-[clamp(24px,3vw,32px)] leading-[1.15] tracking-[-0.02em]">
+              <h2 id="showcase-h" className="mb-6 font-serif text-[clamp(28px,4vw,40px)] leading-[1.1] tracking-[-0.02em]">
                 {project.showcase.label}
               </h2>
               <YouTubeEmbed id={project.showcase.id} title={project.showcase.title} poster={project.showcase.poster} />
@@ -1282,7 +1322,7 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
           {/* Next project */}
           <section aria-labelledby="next-h" className="border-t border-line py-16">
             <p id="next-h" className="reveal mb-3 text-[15px] font-bold text-teal-deep">Next project</p>
-            <h2 className="reveal mb-8 font-serif text-[clamp(32px,5vw,48px)] leading-[1.1]">{next.name}</h2>
+            <h2 className="reveal mb-8 font-serif text-[clamp(28px,4vw,40px)] leading-[1.1] tracking-[-0.02em]">{next.name}</h2>
             <Link href={`/work/${next.slug}`} className={`${btnPrimary} reveal`}>
               Read the case study
             </Link>
@@ -1290,7 +1330,7 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
         </div>
         </div>
       </main>
-      <SiteFooter />
+      <SiteFooter clearSidebar />
     </div>
   );
 }

@@ -23,6 +23,8 @@
   --font-display: var(--font-unbounded), system-ui, sans-serif;
   --font-body: var(--font-source-sans), system-ui, sans-serif;
   --color-line: #dccaa9;
+  /* Marker bar under **bold** words on pages that opt in (see .hilite-bold below). */
+  --color-highlight: #dbddff;
 
   --shadow-nav: 0 2px 6px rgb(28 41 39 / 0.15);
   --shadow-card: 0 1px 1px rgb(28 41 39 / 0.08), 0 4px 6px rgb(28 41 39 / 0.08);
@@ -118,70 +120,6 @@ body {
   }
 }
 
-/* Hero name: highlight follows the pointer inside the letters; descriptor reveals on hover/focus. */
-.hero-name {
-  --mx: -999px;
-  --my: -999px;
-  color: var(--name-color, var(--color-name));
-}
-.hero-name:focus-visible {
-  outline-offset: 8px;
-}
-@supports (-webkit-background-clip: text) or (background-clip: text) {
-  .hero-name__letters {
-    color: transparent;
-    -webkit-background-clip: text;
-    background-clip: text;
-    background-image: radial-gradient(
-      circle 170px at var(--mx) var(--my),
-      var(--color-coral) 0%,
-      var(--color-dusk) 55%,
-      var(--name-color, var(--color-name)) 100%
-    );
-    background-color: var(--name-color, var(--color-name));
-    background-repeat: no-repeat;
-  }
-}
-/* Over the Seattle skyline the dark plum name is unreadable: it fades to cream with a soft shadow (--tone goes 0 to 1 over a
-   moment), and eases back to plum as it docks into the nav pill (--p). */
-@property --tone {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 0;
-}
-.hero-name {
-  --tone: 0;
-  --name-color: color-mix(in srgb, #fffcf3 calc(var(--tone) * (1 - var(--p, 0)) * 100%), var(--color-name));
-  filter: drop-shadow(0 2px 10px rgb(28 20 40 / calc(0.55 * var(--tone) * (1 - var(--p, 0)))));
-  transition: --tone 1.4s ease-in-out 0.2s;
-}
-html[data-scene="seattle"] .hero-name {
-  --tone: 1;
-}
-.hero-name__reveal {
-  transition: opacity 0.25s ease, translate 0.35s cubic-bezier(0.23, 1, 0.32, 1);
-}
-@media (hover: hover) and (pointer: fine) {
-  .hero-name__reveal {
-    opacity: 0;
-    translate: -8px 0;
-  }
-  .hero-name:hover .hero-name__reveal,
-  .hero-name:focus-visible .hero-name__reveal {
-    opacity: 1;
-    translate: 0 0;
-  }
-}
-
-/* While the name travels into the nav pill, hide the descriptor. */
-.hero-name[data-moving="true"] .hero-name__reveal {
-  opacity: 0 !important;
-  pointer-events: none;
-}
-.hero-name[data-docked="true"] {
-  cursor: pointer;
-}
-
 /* Striped edge: bars in the image's own color that thin out and lighten downward, so the image seems to dissolve into the page (like the reference). Sits at the top of the content sheet. */
 .stripe-edge {
   height: 30px;
@@ -195,24 +133,9 @@ html[data-scene="seattle"] .hero-name {
   }
 }
 
-/* The hero card wraps its content (no wider than it has to be). Over the Seattle skyline it mirrors to the right edge of the
-   hero with the same margin on the right as on the left (3rem, or 6rem from lg), whatever its width: cqw is the width of
-   .hero-card-wrap and 100% inside translate is the card's own width. Desktop only. */
+/* The hero card wraps its content (no wider than it has to be) and stays on the left edge, whichever scene is showing. */
 .hero-card-wrap {
   container-type: inline-size;
-}
-.hero-card {
-  transition: translate 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@media (min-width: 768px) {
-  html[data-scene="seattle"] .hero-card {
-    translate: calc(100cqw - 100% - 6rem) 0;
-  }
-}
-@media (min-width: 1024px) {
-  html[data-scene="seattle"] .hero-card {
-    translate: calc(100cqw - 100% - 12rem) 0;
-  }
 }
 
 /* Custom cursor: a small Stardew-style pixel arrow (sprites in public/cursors). Mouse-like pointers only. */
@@ -295,6 +218,10 @@ html[data-scene="seattle"] .hero-name {
   --bubble-to: #eee;
   --bubble-text: #000;
 }
+/* The nav looks the same on every page: keep its coral Contact button out of the black recolor. */
+[data-theme="base"] header {
+  --color-coral: #e87a6e;
+}
 [data-theme="base"] .bubble {
   box-shadow: none;
 }
@@ -351,4 +278,13 @@ html[data-scene="seattle"] .hero-name {
   [data-theme="base"] .meta-card > div:last-child {
     grid-column: 1 / -1;
   }
+}
+
+/* Pages that opt in (project.highlightBold): **bold** words also get a marker bar across the lower half of the text. */
+.hilite-bold strong {
+  text-decoration-line: underline;
+  text-decoration-color: var(--color-highlight);
+  text-decoration-thickness: 0.55em;
+  text-underline-offset: -0.3em;
+  text-decoration-skip-ink: none;
 }
