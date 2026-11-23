@@ -51,17 +51,6 @@ export function ChartCarousel({ children, label }: { children: ReactNode; label:
 
   return (
     <div className="reveal">
-      <div className="mb-3 flex items-center justify-end gap-3">
-        <p aria-live="polite" className="mr-1 text-[15px] text-muted">
-          {view.first === view.last ? `${view.first}` : `${view.first}–${view.last}`} of {items.length}
-        </p>
-        <button type="button" data-ctl aria-label="Previous charts" className={arrow} disabled={view.atStart} onClick={() => page(-1)}>
-          <span aria-hidden="true">←</span>
-        </button>
-        <button type="button" data-ctl aria-label="Next charts" className={arrow} disabled={view.atEnd} onClick={() => page(1)}>
-          <span aria-hidden="true">→</span>
-        </button>
-      </div>
       <ul
         ref={ref}
         tabIndex={0}
@@ -74,6 +63,17 @@ export function ChartCarousel({ children, label }: { children: ReactNode; label:
           </li>
         ))}
       </ul>
+      <div className="mt-4 flex items-center justify-end gap-3">
+        <p aria-live="polite" className="mr-1 text-[15px] text-muted">
+          {view.first === view.last ? `${view.first}` : `${view.first}–${view.last}`} of {items.length}
+        </p>
+        <button type="button" data-ctl aria-label="Previous charts" className={arrow} disabled={view.atStart} onClick={() => page(-1)}>
+          <span aria-hidden="true">←</span>
+        </button>
+        <button type="button" data-ctl aria-label="Next charts" className={arrow} disabled={view.atEnd} onClick={() => page(1)}>
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
     </div>
   );
 }

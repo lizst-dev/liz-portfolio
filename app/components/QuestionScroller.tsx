@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /** How far (in screen heights) the page scrolls for each question to change. */
 const SCREENS_PER_QUESTION = 0.6;
@@ -116,16 +116,30 @@ export function QuestionScroller({ label, questions }: { label?: string; questio
     };
   }, [n, pinned, geometry]);
 
+  // Toggling swaps a very tall pinned block (it reserves scroll distance for the questions) for a short list, or back.
+  // Scrolling before the swap would leave the page parked deep in the next section, so wait for the new layout and
+  // then bring the top of the section into view, just under the fixed nav.
+  const toggled = useRef(false);
+  useLayoutEffect(() => {
+    if (!toggled.current) return;
+    toggled.current = false;
+    const el = outer.current;
+    if (!el) return;
+    const navClearance = 112;
+    const top = showAll ? el.getBoundingClientRect().top + window.scrollY - navClearance : topFor(0);
+    window.scrollTo({ top, behavior: "instant" });
+  }, [showAll, topFor]);
+
   const showAllLink = (
     <button
       type="button"
       onClick={() => {
+        toggled.current = true;
         setShowAll((v) => !v);
-        outer.current?.scrollIntoView({ block: "center" });
       }}
       className="cursor-pointer text-[16px] font-bold underline underline-offset-4 hover:no-underline"
     >
-      {showAll ? "Scroll through" : "Show all"}
+      {showAll ? "Collapse" : "Show all"}
     </button>
   );
 

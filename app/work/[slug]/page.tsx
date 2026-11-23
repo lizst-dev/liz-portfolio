@@ -11,6 +11,7 @@ import { PhoneSequence } from "../../components/PhoneSequence";
 import { CardVideo } from "../../components/CardVideo";
 import { SketchViewer } from "../../components/SketchViewer";
 import { YouTubeEmbed } from "../../components/YouTubeEmbed";
+import { AffinityBoard } from "../../components/AffinityBoard";
 import { DocViewer } from "../../components/DocViewer";
 import { PanViewer } from "../../components/PanViewer";
 import { QuestionScroller } from "../../components/QuestionScroller";
@@ -130,13 +131,20 @@ function RecCard({ recs }: { recs: string[] }) {
 }
 
 function Fig({ figure }: { figure: Figure }) {
+  if (figure.board) {
+    // A board is wide, so it pulls out into the number gutter on the left and, where the screen has room, past the
+    // text column on the right (never beyond the page margin), to be as big as the page allows.
+    return (
+      <figure className="reveal">
+        <AffinityBoard board={figure.board} alt={figure.alt} />
+        {figure.caption && <figcaption className="mt-3 text-[15px] text-muted">{figure.caption}</figcaption>}
+      </figure>
+    );
+  }
   if (figure.pan) {
     return (
       <figure className="reveal">
         <PanViewer
-          preview={figure.src}
-          previewWidth={figure.width}
-          previewHeight={figure.height}
           full={figure.pan.src}
           fullWidth={figure.pan.width}
           fullHeight={figure.pan.height}
@@ -149,14 +157,12 @@ function Fig({ figure }: { figure: Figure }) {
     return (
       <figure className="reveal">
         <DocViewer
-          src={figure.src}
-          alt={figure.alt}
           width={figure.width}
           height={figure.height}
           pages={figure.viewer.pages}
           pageWidth={figure.viewer.pageWidth}
           pageHeight={figure.viewer.pageHeight}
-          hotspots={figure.viewer.hotspots}
+          sheets={figure.viewer.sheets}
         />
       </figure>
     );
@@ -731,7 +737,11 @@ function SectionBody({ s, wide }: { s: Section; wide?: boolean }) {
               <div className={`min-w-0 flex-1 ${c.aside ? "flex flex-col gap-6 md:flex-row md:items-start md:gap-10" : ""}`}>
               <div className={`${c.aside ? "min-w-0 flex-1" : ""} ${wide || c.figure ? "" : "max-w-[56ch]"}`}>
                 <h3 className="mb-1 font-serif text-[clamp(20px,2.4vw,24px)] leading-[1.2]">{c.title}</h3>
-                {c.text && <p><Rich>{c.text}</Rich></p>}
+                {c.text && (
+                  <div className="space-y-1.5">
+                    {c.text.split("\n").map((line) => <p key={line}><Rich>{line}</Rich></p>)}
+                  </div>
+                )}
                 {c.figure && (
                   <div className="mt-5">
                     <Fig figure={c.figure} />
@@ -1005,18 +1015,21 @@ function Bubble({
   tone,
   className = "",
   style,
+  lift = false,
   children,
 }: {
   tone: number;
   className?: string;
   style?: React.CSSProperties;
+  /** Rise a little and deepen the shadow on hover. Off by default: most bubbles are plain text. */
+  lift?: boolean;
   children: React.ReactNode;
 }) {
   const t = BUBBLE_TONES[tone % BUBBLE_TONES.length];
   return (
     <div
       style={{ background: `linear-gradient(180deg, var(--bubble-from, ${t.from}), var(--bubble-to, ${t.to}))`, ...style }}
-      className={`bubble relative rounded-[28px] px-7 py-5 text-[18px] leading-snug text-[var(--bubble-text,#1d2f55)] shadow-[0_10px_22px_-8px_rgba(35,60,101,0.45),0_2px_4px_rgba(35,60,101,0.12)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1.5 hover:shadow-[0_18px_30px_-10px_rgba(35,60,101,0.5),0_3px_6px_rgba(35,60,101,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${className}`}
+      className={`bubble relative rounded-[28px] px-7 py-5 text-[18px] leading-snug text-[var(--bubble-text,#1d2f55)] shadow-[0_10px_22px_-8px_rgba(35,60,101,0.45),0_2px_4px_rgba(35,60,101,0.12)] ${lift ? "transition-[transform,box-shadow] duration-200 hover:-translate-y-1.5 hover:shadow-[0_18px_30px_-10px_rgba(35,60,101,0.5),0_3px_6px_rgba(35,60,101,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0" : ""} ${className}`}
     >
       {children}
       {/* Comic-style tail, the same color as the bubble's lower edge so it reads as one shape. */}
@@ -1050,7 +1063,7 @@ function FindingRow({ f, flip }: { f: FindingLite; flip?: boolean }) {
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="text-[18px] font-bold leading-snug">{f.title}</span>
-              {f.severity !== "Low" && <SeverityBadge level={f.severity} label={`${f.severity} severity`} />}
+              <SeverityBadge level={f.severity} label={`${f.severity} severity`} />
             </span>
             <span className="mt-0.5 block text-[16px] leading-snug text-muted">{f.takeaway}</span>
           </span>
@@ -1122,7 +1135,7 @@ function FindingsOutline({ groups }: { groups: FindingGroup[] }) {
 function SpeechBubble({ text, by }: { text: string; by: string }) {
   return (
     <div className="reveal relative pb-5">
-      <Bubble tone={0} className="z-10 w-full max-w-[640px]">
+      <Bubble tone={0} lift className="z-10 w-full max-w-[640px]">
         <p>“<Rich>{text}</Rich>”</p>
         <p className="mt-2 text-[15px] font-bold">{`– ${by}`}</p>
       </Bubble>

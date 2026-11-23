@@ -170,12 +170,25 @@ export type Figure = {
   marks?: { x: number; y: number; w: number; h: number }[];
   /** Shows `src` as a preview that opens a full-screen viewer you can pan and zoom, using this larger image. */
   pan?: { src: string; width: number; height: number };
+  /**
+   * Rebuilds a big board from separate high-resolution sections, laid out as they sit on the board. Each section
+   * opens in a full-screen viewer to pan, zoom and read. When set, the board is shown instead of `src`.
+   */
+  board?: {
+    /** The board's overall size; sections, arrows and stickies are placed in these units. */
+    width: number;
+    height: number;
+    sections: { title: string; src: string; width: number; height: number; alt: string; x: number; y: number; w: number; h: number }[];
+    arrows?: { from: [number, number]; to: [number, number] }[];
+    stickies?: { x: number; y: number; w: number; h: number; color: string }[];
+  };
   /** Makes each page in the image clickable, opening it large with Previous/Next. */
   viewer?: {
     pages: { src: string; alt: string }[];
     pageWidth: number;
     pageHeight: number;
-    hotspots: { page: number; polygon: string }[];
+    /** Each page's top-left corner and width (% of the preview) and tilt (degrees), listed front to back. */
+    sheets: { page: number; left: number; top: number; width: number; rotate: number }[];
   };
 };
 
@@ -962,16 +975,16 @@ export const projects: Project[] = [
     name: "Uber",
     logo: { src: "/images/logos/uber.png", width: 778, height: 275 },
     kicker: "UX research case study · Mobility",
-    headline: "Why riders and drivers miss each other at pickup",
+    headline: "Why riders miss their drivers at pickup",
     status: { label: "Research", tone: "purple" },
     tags: ["Usability study", "Mobility"],
-    role: "UX researcher and PM · 10 weeks",
+    role: "UX researcher and Project Manager · 10 weeks",
     cardSummary:
-      "A usability study of the rendezvous phase, from driver acceptance to vehicle entry, at hard pickup spots: multi-level garages, inaccurate GPS, one-way streets, and dense urban blocks.",
+      "A usability study of the rendezvous phase, from driver acceptance to vehicle entry, at complex pickup spots: multi-level garages, inaccurate GPS, one-way streets, and dense urban blocks.",
     hideStats: true,
     stats: [],
     meta: [
-      { label: "Role", value: ["UX Researcher", "PM"] },
+      { label: "Role", value: ["UX Researcher", "Project Manager"] },
       { label: "Timeline", value: ["10 weeks", "Winter 2026"] },
       { label: "Team", value: ["Jenn Park", "Grace Liu", "Yudie Xia", "Liz Overbeek"] },
       { label: "Uber Partners", value: ["Joan Williams", "Jonathon Markowski"] },
@@ -980,15 +993,18 @@ export const projects: Project[] = [
     tldr: [
       {
         label: "Focus",
-        text: "The rendezvous phase of the Uber rider app: everything between a driver accepting a ride and the rider getting into the car.",
+        href: "#overview",
+        text: "The rendezvous phase of the Uber rider app: everything between a driver accepting a ride and the rider getting into the car, including interpreting the pickup location, navigating to the meeting point, tracking the driver's arrival, and coordinating with the driver.",
       },
       {
         label: "What we did",
-        text: "Ran unmoderated, think-aloud usability tests with 9 riders who regularly face hard pickups, followed by a questionnaire and interview.",
+        href: "#methods",
+        text: "Our target audience was riders who deal with complex pickup environments, such as multi-level pickup areas and places with GPS or coordination challenges. To understand how they handle these situations, we ran unmoderated, think-aloud usability tests with 9 riders who regularly face complex pickups, followed by a questionnaire and interview.",
       },
       {
         label: "What we found",
-        text: "Five findings. Pickup suggestions, the map, and GPS all erode trust, riders fall back on instinct, and not knowing which side of the road to wait on is the one issue that raises a safety concern.",
+        href: "#findings",
+        text: "Across five findings, we found that riders couldn't count on the app to put them in the right place. Pickup point suggestions, the map, and GPS weren't meeting expectations, so they fell back on instinct. One gap highlighted a safety concern. The app never says which side of the road to wait on, which causes unsafe traffic patterns & pedestrian risk.",
       },
     ],
     sections: [
@@ -1034,23 +1050,27 @@ export const projects: Project[] = [
                   { src: "/images/uber/participant-instructions-2.jpg", alt: "Participant instructions, page 2: privacy and the step-by-step study instructions." },
                   { src: "/images/uber/participant-instructions-3.jpg", alt: "Participant instructions, page 3: the final steps once the ride is complete, and additional notes for the waiting period." },
                 ],
-                // The visible part of each page (the pages overlap, so these never do), as clip-path outlines in % of the image.
-                hotspots: [
-                  { page: 2, polygon: "polygon(32.6% 0.2%, 30.8% 14.9%, 49.1% 14.9%, 49.1% 35.4%, 54.0% 23.6%, 77.6% 32.8%, 80.9% 6.7%)" },
-                  { page: 1, polygon: "polygon(30.7% 79.8%, 75.9% 98.8%, 98.8% 41.0%, 54.0% 23.6%, 49.1% 35.4%, 49.1% 77.0%, 31.9% 77.0%)" },
-                  { page: 0, polygon: "polygon(0.2% 14.9%, 49.1% 14.9%, 49.1% 77.0%, 0.2% 77.0%)" },
+                // Front to back. Positions come from where the pages sit in the original flat preview image.
+                sheets: [
+                  { page: 0, left: 0.2, top: 14.9, width: 48.9, rotate: 0 },
+                  { page: 1, left: 54.0, top: 23.6, width: 48.9, rotate: 21.5 },
+                  { page: 2, left: 32.6, top: 0.2, width: 48.9, rotate: 7.75 },
                 ],
               },
             },
           },
           {
             title: "Post-test questionnaire",
-            text: "A five-point Likert scale across six dimensions of the pickup experience, with an open-ended “why” for each rating, to inform our interview scripts, incorporating mixed-methods research.",
-            bubbles: ["How would you rate the clarity of your pickup location? Why did you choose the rating you did?"],
+            // One labeled line each (a "\n" starts a new line; **double asterisks** make the label bold).
+            text: "**Purpose:** Gather quantitative data to align participant perceptions of the pickup experience across 6 dimensions. Incorporate mixed methods research.\n**Format:** Survey with 5-point Likert scale ratings + open-ended “why” follow-up for each question.\n**Goal:** Pair numeric ratings with qualitative reasoning to identify patterns.",
+            bubbles: [
+              "How would you rate the clarity of your pickup location?",
+              "Why did you choose the rating you did?",
+            ],
           },
           {
             title: "Post-test interview",
-            text: "Remote and semi-structured, with questions ordered primary, secondary, then exploratory. It clarified in-app decisions, moments of hesitation, and trust in the app's guidance.",
+            text: "**Purpose:** Gather qualitative data to clarify in-app decisions, moments of hesitation, and trust in system guidance.\n**Format:** Remote, semi-structured interview.\n**Priority structure:** Primary → Secondary → Exploratory questions.",
             bubbles: [
               "How did you determine when and where the driver had arrived?",
               "How did you understand where the pickup location was?",
@@ -1063,10 +1083,27 @@ export const projects: Project[] = [
             figure: {
               src: "/images/uber/affinity-diagram.png",
               alt: "Affinity diagram of color-coded sticky notes from the study, grouped into clusters of related observations, with written findings and design implications beside each cluster.",
-              caption: "195 observations grouped into 15 clusters across setup, navigation, and pickup, which became the five findings below.",
+              caption: "195 observations grouped into 15 clusters across setup, navigation, and pickup, which became the five findings below. Click any section to open it and read the notes.",
               width: 1978,
               height: 539,
               bare: true,
+              board: {
+                width: 1442,
+                height: 416,
+                // Placed where each part sits on the full board, in the board's own units. Workflow order, for Previous/Next.
+                sections: [
+                  { title: "Insights", src: "/images/uber/affinity/insights.webp", width: 3140, height: 4000, x: 60, y: 35, w: 243, h: 310, alt: "Insights: every observation as a sticky note, one column per interview question (Comments, Q1 to Q11, and PQ1 to PQ3), color-coded by participant." },
+                  { title: "Setup", src: "/images/uber/affinity/setup.webp", width: 4000, height: 2696, x: 321, y: 40, w: 259, h: 175, alt: "Setup: observations grouped into adjusting the pickup point, Uber-suggested pickup points, and pickup behavior, with the core findings and design implications for each." },
+                  { title: "Navigation", src: "/images/uber/affinity/navigation.webp", width: 4000, height: 3098, x: 604, y: 40, w: 225, h: 174, alt: "Navigation: observations grouped into map and spatial orientation, navigation and GPS, and side of the road, with the quantitative ratings, core findings and design implications." },
+                  { title: "Pickup", src: "/images/uber/affinity/pickup.webp", width: 4000, height: 3104, x: 860, y: 37, w: 291, h: 226, alt: "Pickup: observations grouped into driver communication, locating the driver, pickup difficulty, timing, and cost, with the quantitative data, core findings and design implications." },
+                  { title: "Not significant", src: "/images/uber/affinity/not-significant.webp", width: 4000, height: 1549, x: 404, y: 244, w: 316, h: 122, alt: "Not significant: observations that did not become findings, grouped as waiting period, notifications, overall pickup process, and safety." },
+                  { title: "Findings summary", src: "/images/uber/affinity/findings-summary.webp", width: 2851, height: 4000, x: 1180, y: 36, w: 231, h: 324, alt: "Findings summary: the core findings and design implications for each cluster, beside the quantitative ratings." },
+                ],
+                arrows: [
+                  { from: [585, 131], to: [603, 131] },
+                  { from: [834, 131], to: [852, 153] },
+                ],
+              },
             },
           },
         ],
@@ -1076,13 +1113,13 @@ export const projects: Project[] = [
       },
       {
         heading: "Participants",
-        title: "9 riders who knew hard pickups firsthand",
+        title: "9 riders who had experienced complex pickups",
         paras: ["We recruited 9 participants for this study through a Screening Survey. Participants were frequent Uber users, highly confident with the app, and primarily riding in urban environments."],
         intro: "Minimum requirements for a participant",
         bulletCards: true,
         bullets: [
           "Used Uber 1-6 times in the past month",
-          "Experienced a confusing pickup situation",
+          "Experienced a complex pickup situation",
           "Ages 21-60",
           "Located in the United States",
         ],
@@ -1115,7 +1152,7 @@ export const projects: Project[] = [
           {
             kind: "columns",
             title: "How confident are you using the Uber app?",
-            note: "9 responses, 1 to 5",
+            note: "9 responses. Scale: 0 = I cannot use the Uber app at all, 5 = Expert user",
             total: 9,
             items: [
               { label: "1", value: 0 },
@@ -1141,15 +1178,14 @@ export const projects: Project[] = [
           {
             kind: "pie",
             title: "Rides with Uber in the past month",
-            note: "Screening survey, 10 responses",
-            total: 10,
+            note: "Screening survey, 9 responses",
+            total: 9,
             items: [
               { label: "1–3 rides", value: 5 },
-              { label: "4–6 rides", value: 4 },
+              { label: "4–6 rides", value: 3 },
               { label: "7 or more", value: 1 },
-              { label: "None", value: 0 },
             ],
-            alt: "Pie chart of rides taken with Uber in the past month from 10 screening survey responses: 50 percent took 1 to 3 rides, 40 percent took 4 to 6, and 10 percent took 7 or more.",
+            alt: "Pie chart of rides taken with Uber in the past month from 9 screening survey responses: 55.6 percent took 1 to 3 rides, 33.3 percent took 4 to 6, and 11.1 percent took 7 or more.",
           },
           {
             kind: "pie",
@@ -1184,12 +1220,12 @@ export const projects: Project[] = [
         title: "5 findings across 3 stages of the pickup",
         paras: [
           "The study surfaced more findings than fit here. These five are the ones I chose to highlight because they impacted trust and safety the most.",
-          "Each finding was assigned a severity rating based on its impact on the user experience. Most were low, but one was medium because it raised a safety concern.",
+          "Each finding was assigned a severity rating based on its impact on the user experience. Anything that could put a rider at risk is rated high, so only one finding earns that rating; two made the pickup harder to complete and two were frustrating but did not get in the way.",
         ],
         scale: [
           { level: "Low", text: "Frustrating, but not task inhibiting" },
-          { level: "Medium", text: "Safety related, but not task inhibiting" },
-          { level: "High", text: "Task unable to be completed" },
+          { level: "Medium", text: "Task inhibiting, but still completed with detours or delays" },
+          { level: "High", text: "Safety related: could put the rider at risk" },
         ],
         outline: [
           {
@@ -1197,8 +1233,8 @@ export const projects: Project[] = [
             findings: [
               {
                 title: "Pickup suggestions erode trust, so riders rely on instinct",
-                takeaway: "Suggested spots feel arbitrary and can't be questioned, so riders fall back on visible, familiar spots and expect friction.",
-                severity: "Low",
+                takeaway: "Suggested spots feel arbitrary, so riders fall back on visible, familiar spots and expect friction.",
+                severity: "Medium",
                 points: [
                   "Suggested spots feel far away, impractical, or unrelated to what riders expect, and riders didn't see or use the reasoning behind them.",
                   "Frequent pin changes and automatic location adjustments make riders feel the system overrides their intended spot.",
@@ -1259,7 +1295,7 @@ export const projects: Project[] = [
               {
                 title: "Side of the road is critical",
                 takeaway: "The app doesn't say which side of the road to wait on, which raises a safety concern.",
-                severity: "Medium",
+                severity: "High",
                 clip: {
                   participant: "P5",
                   mp4: "/images/uber/pickup-side-clip.mp4",
@@ -1277,7 +1313,7 @@ export const projects: Project[] = [
                 quote: { text: "I often don't know which direction the car will approach from, so I'm not sure which side of the road I should stand on.", by: "P6" },
                 recs: [
                   "Add explicit street-side guidance to the pickup map.",
-                  "Align rider and driver positioning before the driver arrives.",
+                  "Ensure driver is approaching the same side the rider is on prior to driver arrival",
                 ],
               },
             ],
@@ -1288,7 +1324,7 @@ export const projects: Project[] = [
               {
                 title: "Drivers don't stop where the pin is",
                 takeaway: "Drivers often don't stop at the pin the rider chose, so pickup reliability feels inconsistent.",
-                severity: "Low",
+                severity: "Medium",
                 clip: {
                   participant: "P1",
                   mp4: "/images/uber/gps-clip.mp4",
@@ -1344,10 +1380,17 @@ export const projects: Project[] = [
         ],
       },
       {
+        heading: "Deliverables",
+        title: "Findings passed to Uber Maps team",
+        paras: [
+          "We worked with Uber's Rendezvous team throughout the study, and presented our results to them at the end: the five major findings, the severity of each, and our recommendations.",
+          "The rendezvous team then passed our findings and recommendations on to the Maps team, who will assess them further and decide which to take forward for potential implementation.",
+        ],
+      },
+      {
         heading: "Reflection and next steps",
-        title: "What a follow-up should cover",
+        title: "Three limits of this study point to what a follow-up should cover",
         numbered: true,
-        paras: ["Three limits of the study point to what a follow-up should do."],
         cards: [
           {
             title: "Sample diversity",

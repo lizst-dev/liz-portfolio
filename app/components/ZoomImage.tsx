@@ -42,7 +42,9 @@ export function ZoomImage({
   const many = Boolean(group && group.length > 1);
   const shown: ZoomItem = group ? group[current] : { src, alt, width, height };
   const step = (by: number) => {
-    if (group) setCurrent((c) => (c + by + group.length) % group.length);
+    if (!group) return;
+    setCurrent((c) => (c + by + group.length) % group.length);
+    ref.current?.scrollTo({ top: 0, behavior: "instant" }); // each image starts at its top
   };
 
   return (
@@ -52,6 +54,7 @@ export function ZoomImage({
         onClick={() => {
           setCurrent(index); // always open on the image that was clicked
           ref.current?.showModal();
+          ref.current?.scrollTo({ top: 0, behavior: "instant" }); // and at its top
         }}
         aria-label={`Expand image: ${alt}`}
         className={`block w-full cursor-zoom-in text-left ${fill ? "sm:absolute sm:inset-0 sm:h-full" : ""}`}
